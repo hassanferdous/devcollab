@@ -8,13 +8,17 @@ export default class TaskNamespace extends SocketNamespace {
 
 	onConnection(namespace: Namespace): void {
 		namespace.on("connection", (socket: Socket) => {
-			console.log("a user connected", socket.id);
+			console.log(
+				`a user connected in tasks namespace with id ${socket.id}`
+			);
 		});
 	}
 
 	onDisConnection(namespace: Namespace): void {
 		namespace.on("disconnect", (socket: Socket) => {
-			console.log("user disconnected", socket.id);
+			console.log(
+				`user disconnected from tasks namespace with id ${socket.id}`
+			);
 		});
 	}
 }
