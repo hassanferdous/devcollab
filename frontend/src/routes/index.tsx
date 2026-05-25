@@ -1,8 +1,21 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useMemo } from 'react'
+import { io } from 'socket.io-client'
 
 export const Route = createFileRoute('/')({ component: App })
 
 function App() {
+  const taskSocket = useMemo(() => io('http://localhost:8000/tasks'), [])
+  useEffect(() => {
+    taskSocket.on('connect', () => {
+      console.log('Connected to Task Namespace', taskSocket.id)
+    })
+
+    return () => {
+      taskSocket.disconnect()
+    }
+  }, [])
+
   return (
     <main className="page-wrap px-4 pb-8 pt-14">
       <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14">

@@ -17,6 +17,7 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+.netlify
 
 # Editor directories and files
 .vscode/*
