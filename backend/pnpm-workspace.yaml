@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  "@scarf/scarf": false
+  bcrypt: false
+  esbuild: false
+  ioredis: false
+ignoreWorkspaceRootCheck: true

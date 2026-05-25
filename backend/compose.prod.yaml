@@ -1,0 +1,9 @@
+services:
+  backend:
+    image: devcollab-backend:prod
+    build:
+      target: production
+    env_file:
+      - ./.env
+    ports:
+      - "${APP_PORT:-8000}:${APP_PORT:-8000}"

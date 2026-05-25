@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.env.development
+.env.production
+.git
+
+drizzle.config.ts
+drizzle/

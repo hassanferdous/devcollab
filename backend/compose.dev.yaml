@@ -1,0 +1,13 @@
+services:
+  backend:
+    image: devcollab-backend:dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: ["pnpm", "dev"]
+    build:
+      target: development
+    env_file:
+      - ./.env.development
+    ports:
+      - "${APP_PORT:-8001}:${APP_PORT:-8001}"
