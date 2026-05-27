@@ -1,8 +1,8 @@
-import { projectIdSchema } from "@/validator/params";
 import auth from "@/middlewares/auth";
 import validate from "@/middlewares/validator";
 import { getRequestContext } from "@/utils/getRequestContext";
 import { ApiResponse } from "@/utils/response";
+import { projectIdSchema } from "@/validator/params";
 import type { Request, Response } from "express";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
@@ -13,6 +13,7 @@ import {
 	updateMemberSchema,
 	updateProjectSchema
 } from "./validation";
+import { Namespace } from "socket.io";
 
 const router = express.Router();
 
@@ -34,6 +35,7 @@ router.post(
 			...req.body,
 			owner_id: req.user?.id as number
 		});
+
 		ApiResponse.success(
 			res,
 			"Successfully created new project!",
@@ -74,6 +76,11 @@ router.get(
 		const context = getRequestContext(req);
 		const id = +req.params.projectId;
 		const data = await ProjectServices.getById(id, context, req.project);
+		const nsp = req.app.get("projectNsp") as Namespace;
+		nsp.to(`project:${id}`).emit("project:joined", {
+			projectId: id,
+			userId: req.user?.id
+		});
 		ApiResponse.success(
 			res,
 			"Successfully fetched project!",
@@ -100,6 +107,7 @@ router.put(
 		const context = getRequestContext(req);
 		const id = +req.params.projectId;
 		const data = await ProjectServices.update(id, req.body, context);
+
 		ApiResponse.success(
 			res,
 			"Successfully updated project!",

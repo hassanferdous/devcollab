@@ -1,8 +1,8 @@
-import { Server } from "socket.io";
 import { config } from "@/config";
+import { ProjectNamespace } from "@/socket/project.nsp";
 import { Express } from "express";
 import { createServer, Server as HttpServer } from "http";
-import socket from "@/socket";
+import { Server } from "socket.io";
 
 export const useSocket = (app: Express): { server: HttpServer; io: Server } => {
 	const server = createServer(app);
@@ -13,7 +13,8 @@ export const useSocket = (app: Express): { server: HttpServer; io: Server } => {
 		}
 	});
 
-	socket(io);
+	const projectNsp = new ProjectNamespace(io);
+	app.set("projectNsp", projectNsp.get());
 
 	return { server, io };
 };

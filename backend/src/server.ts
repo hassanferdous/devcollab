@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import db from "@/config/db";
 import { config } from "@/config/index";
+import "@/config/redis";
 import "@/domains/v1/auth/passport";
 import {
 	entityParseHandler,
@@ -11,11 +12,15 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import morgan from "morgan";
 import passport from "passport";
-import "@/config/redis";
-import { useSocket } from "./config/socket-config";
+import { useSocket } from "./config/io";
 
 const app = express();
 
+/**
+ * Register Socket
+ */
+const { server, io } = useSocket(app);
+app.set("io", io);
 /*
  * Register Passport
  */
@@ -65,8 +70,6 @@ app.use(errorHandler);
  */
 async function startServer() {
 	await connectDB();
-	const { server, io } = useSocket(app);
-	app.set("io", io);
 	server.listen(config.env.APP_PORT, () => {
 		console.log(
 			`🚀 Server running in ${config.env.NODE_ENV} mode on http://localhost:${config.env.APP_PORT}`

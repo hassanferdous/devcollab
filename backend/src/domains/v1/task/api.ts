@@ -13,6 +13,7 @@ import {
 	projectIdSchema,
 	updateTaskSchema
 } from "./validation";
+import { Namespace } from "socket.io";
 
 const router = express.Router({
 	mergeParams: true
@@ -33,7 +34,6 @@ router.post(
 	projectAccess("Task"),
 	async (req: Request, res: Response) => {
 		const context = getRequestContext(req);
-
 		const data = await TaskServices.create(
 			{
 				...req.body,
@@ -42,6 +42,9 @@ router.post(
 			},
 			context
 		);
+		const nsp = req.app.get("taskNsp") as Namespace;
+		nsp.to(`project:${req.params.projectId}`).emit("task:created", data);
+
 		ApiResponse.success(
 			res,
 			"Successfully created new task!",

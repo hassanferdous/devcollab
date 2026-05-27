@@ -1,4 +1,3 @@
-import { User } from "@/domains/v1/user/service";
 import { PaginationMeta } from "@/utils/response";
 import { JwtPayload } from "jsonwebtoken";
 declare global {
