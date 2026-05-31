@@ -1,3 +1,4 @@
-package-lock.json
+**/build
+**/public
 pnpm-lock.yaml
-yarn.lock
+routeTree.gen.ts
