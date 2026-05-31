@@ -11,9 +11,89 @@ import { createUserSchema } from "./validation";
 const router = express.Router();
 
 /**
- * @route   POST /api/v1/users
- * @desc    Create a new user record
- * @access  Public
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         name:
+ *           type: string
+ *           nullable: true
+ *           example: John Doe
+ *         email:
+ *           type: string
+ *           format: email
+ *           example: john@example.com
+ *         avatar:
+ *           type: string
+ *           nullable: true
+ *           example: null
+ *         provider:
+ *           type: string
+ *           example: credential
+ *         isActive:
+ *           type: boolean
+ *           example: true
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/v1/users:
+ *   post:
+ *     summary: Create a new user record
+ *     description: Registers a new user with the given details (Public).
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: John Doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: john@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: password123
+ *     responses:
+ *       201:
+ *         description: Successfully created new user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: Successfully created new user!
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
  */
 router.post(
 	"/",
@@ -33,10 +113,38 @@ router.post(
 );
 
 /**
- * @route   GET /api/v1/users
- * @desc    Retrieve all user records for the authenticated user
- * @access  Private
- * @returns {Promise<User[]>} Array of user records
+ * @swagger
+ * /api/v1/users:
+ *   get:
+ *     summary: Retrieve all user records
+ *     description: Returns a list of all users. Requires authentication.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully fetched all users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Successfully fetched all user!
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
  */
 router.get("/", auth, async (_, res: Response) => {
 	const data = await UserServices.getAll();
@@ -49,11 +157,40 @@ router.get("/", auth, async (_, res: Response) => {
 });
 
 /**
- * @route   GET /api/v1/users/:id
- * @desc    Retrieve a single user record by ID
- * @access  Private
- * @param   {number} id - Unique identifier of the user
- * @returns {Promise<User>} User record
+ * @swagger
+ * /api/v1/users/{id}:
+ *   get:
+ *     summary: Retrieve a single user record by ID
+ *     description: Returns the user detail for a specific ID.
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the user
+ *     responses:
+ *       200:
+ *         description: Successfully fetched user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Successfully fetched user!
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found
  */
 router.get("/:id", async (req: Request, res: Response) => {
 	const id = +req.params.id;
@@ -63,11 +200,52 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 /**
- * @route   PUT /api/v1/users/:id
- * @desc    Update an existing user record by ID
- * @access  Private
- * @param   {number} id - Unique identifier of the user
- * @returns {Promise<User>} Updated user
+ * @swagger
+ * /api/v1/users/{id}:
+ *   put:
+ *     summary: Update an existing user record by ID
+ *     description: Updates fields of an existing user by ID.
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       202:
+ *         description: Successfully updated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 202
+ *                 message:
+ *                   type: string
+ *                   example: Successfully updated user!
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
  */
 router.put("/:id", async (req: Request, res: Response) => {
 	const id = +req.params.id;
@@ -82,11 +260,22 @@ router.put("/:id", async (req: Request, res: Response) => {
 });
 
 /**
- * @route   DELETE /api/v1/users/:id
- * @desc    Delete a user by ID
- * @access  Private
- * @param   {number} id - Unique identifier of the user
- * @returns {Promise<NoContent>} Deleted user
+ * @swagger
+ * /api/v1/users/{id}:
+ *   delete:
+ *     summary: Delete a user by ID
+ *     description: Deletes a specific user by ID.
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the user
+ *     responses:
+ *       204:
+ *         description: Successfully deleted user
  */
 router.delete("/:id", async (req: Request, res: Response) => {
 	const id = +req.params.id;

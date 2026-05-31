@@ -8,13 +8,23 @@ import {
 	errorHandler
 } from "@/middlewares/global-error-handler";
 import { default as v1Router } from "@/routes/v1";
+import { setupSwagger } from "@/config/swagger";
 import cookieParser from "cookie-parser";
 import express from "express";
 import morgan from "morgan";
 import passport from "passport";
 import { useSocket } from "./config/io";
+import cors from "cors";
 
 const app = express();
+
+app.use(
+	cors({
+		origin: ["http://localhost:3000"],
+		credentials: true,
+		methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+	})
+);
 
 /**
  * Register Socket
@@ -58,6 +68,11 @@ async function connectDB(maxRetries: number = 5, delay: number = 1000) {
  * Register API v1 Routes
  */
 app.use("/api/v1", v1Router);
+
+/**
+ * Register Swagger API Documentation
+ */
+setupSwagger(app);
 
 /**
  * Register global error handler and Entity parser handler

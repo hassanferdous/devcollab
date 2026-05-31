@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm";
 import { StatusCodes } from "http-status-codes";
 import defineAbilityFor, { MemberAbilityContext } from "../project/ability";
+import { Namespace } from "socket.io";
 
 export type Task = InferSelectModel<typeof tasksTable>;
 export type NewTask = InferInsertModel<typeof tasksTable>;
@@ -24,7 +25,8 @@ export const TaskServices = {
 	 */
 	create: async (
 		data: NewTask,
-		context: MemberAbilityContext
+		context: MemberAbilityContext,
+		nsp: Namespace
 	): Promise<Task> => {
 		const ability = defineAbilityFor(context);
 		if (!ability.can("create", "Task"))
@@ -47,6 +49,7 @@ export const TaskServices = {
 					due_date: created.due_date
 				}
 			});
+			nsp.to(`project:${created.project_id}`).emit("task:created", created);
 			return created;
 		});
 
@@ -111,7 +114,8 @@ export const TaskServices = {
 			projectId: number;
 		},
 		data: Partial<NewTask>,
-		context: MemberAbilityContext
+		context: MemberAbilityContext,
+		nsp: Namespace
 	): Promise<Task> => {
 		const oldTask = await TaskServices.getById({ taskId, projectId });
 		const ability = defineAbilityFor(context);
@@ -140,6 +144,7 @@ export const TaskServices = {
 					due_date: updated.due_date
 				}
 			});
+			nsp.to(`project:${updated.project_id}`).emit("task:updated", updated);
 			return updated;
 		});
 
@@ -153,7 +158,8 @@ export const TaskServices = {
 	 */
 	delete: async (
 		{ taskId, projectId }: { taskId: number; projectId: number },
-		context: MemberAbilityContext
+		context: MemberAbilityContext,
+		nsp: Namespace
 	): Promise<Task> => {
 		await TaskServices.getById({ taskId, projectId });
 		const ability = defineAbilityFor(context);
@@ -180,6 +186,7 @@ export const TaskServices = {
 					due_date: deleted.due_date
 				}
 			});
+			nsp.to(`project:${deleted.project_id}`).emit("task:deleted", deleted);
 			return deleted;
 		});
 		return result;

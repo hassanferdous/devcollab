@@ -18,13 +18,108 @@ import { Namespace } from "socket.io";
 const router = express.Router();
 
 /**
- * @route   POST /api/v1/projects
- * @desc    Create a new project
- * @access  Private
- * @param   {Object} req.body - Project details
- * @param   {string} req.body.name - Project name
- * @param   {string} req.body.description - Project description
- * @returns {Promise<Project>} Created project
+ * @swagger
+ * components:
+ *   schemas:
+ *     Project:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         owner_id:
+ *           type: integer
+ *           example: 2
+ *         name:
+ *           type: string
+ *           example: Project DevCollab
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           example: Collaborative development portal
+ *         status:
+ *           type: string
+ *           enum: [active, archived]
+ *           example: active
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *     ProjectMember:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         project_id:
+ *           type: integer
+ *           example: 1
+ *         user_id:
+ *           type: integer
+ *           example: 3
+ *         role:
+ *           type: string
+ *           enum: [admin, member, viewer]
+ *           example: member
+ *         joined_at:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/v1/projects:
+ *   post:
+ *     summary: Create a new project
+ *     description: Creates a new project with the authenticated user as the owner.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - description
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Project DevCollab
+ *               description:
+ *                 type: string
+ *                 example: Collaborative development portal
+ *               status:
+ *                 type: string
+ *                 enum: [active, archived]
+ *                 default: active
+ *                 example: active
+ *     responses:
+ *       201:
+ *         description: Successfully created new project
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: Successfully created new project!
+ *                 data:
+ *                   $ref: '#/components/schemas/Project'
+ *       401:
+ *         description: Unauthorized
  */
 router.post(
 	"/",
@@ -46,10 +141,38 @@ router.post(
 );
 
 /**
- * @route   GET /api/v1/projects
- * @desc    Retrieve all project records for the authenticated user
- * @access  Private
- * @returns {Promise<ProjectWithMember[]>} Array of project records
+ * @swagger
+ * /api/v1/projects:
+ *   get:
+ *     summary: Retrieve all project records for the authenticated user
+ *     description: Returns a list of all projects that the authenticated user owns or is a member of.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully fetched all projects
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Successfully fetched all project!
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Project'
+ *       401:
+ *         description: Unauthorized
  */
 router.get("/", auth, async (req, res: Response) => {
 	const data = await ProjectServices.getAll(req.user!.id!);
@@ -62,11 +185,47 @@ router.get("/", auth, async (req, res: Response) => {
 });
 
 /**
- * @route   GET /api/v1/projects/:projectId
- * @desc    Retrieve a single project record by projectID
- * @access  Private
- * @param   {number} projectId - Unique identifier of the project
- * @returns {Promise<ProjectWithMember>} Project record
+ * @swagger
+ * /api/v1/projects/{projectId}:
+ *   get:
+ *     summary: Retrieve a single project record by projectID
+ *     description: Returns detailed project info. Access is restricted to members/owners.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *     responses:
+ *       200:
+ *         description: Successfully fetched project
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Successfully fetched project!
+ *                 data:
+ *                   $ref: '#/components/schemas/Project'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - No access to project
+ *       404:
+ *         description: Project not found
  */
 router.get(
 	"/:projectId",
@@ -91,12 +250,59 @@ router.get(
 );
 
 /**
- * @route   PUT /api/v1/projects/:projectId
- * @desc    Update an existing project record by projectID
- * @access  Private
- * @param   {number} projectId - Unique identifier of the project
- * @param   {Object} req.body - Project details
- * @returns {Promise<Project>} Updated project
+ * @swagger
+ * /api/v1/projects/{projectId}:
+ *   put:
+ *     summary: Update an existing project record by projectID
+ *     description: Updates properties of a project. Access restricted to project managers/owners.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [active, archived]
+ *     responses:
+ *       202:
+ *         description: Successfully updated project
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 202
+ *                 message:
+ *                   type: string
+ *                   example: Successfully updated project!
+ *                 data:
+ *                   $ref: '#/components/schemas/Project'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - No edit rights
  */
 router.put(
 	"/:projectId",
@@ -118,11 +324,29 @@ router.put(
 );
 
 /**
- * @route   DELETE /api/v1/projects/:projectId
- * @desc    Delete a project by projectID
- * @access  Private
- * @param   {number} projectId - Unique identifier of the project
- * @returns {Promise<NoContent>} Deleted project
+ * @swagger
+ * /api/v1/projects/{projectId}:
+ *   delete:
+ *     summary: Delete a project by projectID
+ *     description: Permanently deletes a project. Access restricted to project owner.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *     responses:
+ *       204:
+ *         description: Successfully deleted project
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Only owner can delete
  */
 router.delete(
 	"/:projectId",
@@ -143,12 +367,66 @@ router.delete(
 );
 
 /**
- * @route PATCH  /api/v1/projects/:projectId/members
- * @desc    Add or Remove project members
- * @access  Private
- * @param   {number} projectId - Unique identifier of the project
- * @param   {Object} req.body - Project details
- * @returns {Promise<Project>} Updated project
+ * @swagger
+ * /api/v1/projects/{projectId}/member:
+ *   patch:
+ *     summary: Add or Remove project members
+ *     description: Manages the project member list. Can add a user with a specific role, or remove a member.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *               - userId
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [add, remove]
+ *                 example: add
+ *               userId:
+ *                 type: integer
+ *                 example: 3
+ *               role:
+ *                 type: string
+ *                 enum: [admin, member, viewer]
+ *                 example: member
+ *     responses:
+ *       202:
+ *         description: Successfully added or removed member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 202
+ *                 message:
+ *                   type: string
+ *                   example: Successfully added project member!
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.patch(
 	"/:projectId/member",

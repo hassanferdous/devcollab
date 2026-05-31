@@ -21,6 +21,9 @@ export default async function auth(
 		cookies.access_token ?? headers.authorization?.replace("Bearer ", "");
 	const _isCookies = !!cookies.access_token;
 
+	console.log("*************** from middleware ***************");
+	console.log({ cookies });
+
 	if (!access_token) throwError("Invalid Token", StatusCodes.UNAUTHORIZED);
 
 	try {

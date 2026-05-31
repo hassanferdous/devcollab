@@ -239,6 +239,22 @@ export const AuthServices = {
 	},
 
 	/**
+	 * @description Get authenticated user
+	 *
+	 * @param {Request} req
+	 * @param {Response} res
+	 * @returns {Promise<any>}
+	 */
+	getMe: async (req: Request, res: Response) => {
+		return ApiResponse.success(
+			res,
+			"User details retrieved successfully",
+			req.user,
+			StatusCodes.OK
+		);
+	},
+
+	/**
 	 * @description Generate Token and set cookie
 	 *
 	 * @param {User} user

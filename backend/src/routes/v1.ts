@@ -12,7 +12,40 @@ import { default as taskRouter } from "@/domains/v1/task/api";
 
 const router = express.Router();
 
-/***** Welcome route *****/
+/**
+ * @swagger
+ * /api/v1/:
+ *   get:
+ *     summary: Welcome route
+ *     description: Returns a welcome message with api version and environment mode.
+ *     tags: [General]
+ *     responses:
+ *       200:
+ *         description: Success welcome message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Welcome to DevCollab
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     version:
+ *                       type: string
+ *                       example: 1.0.0
+ *                     mode:
+ *                       type: string
+ *                       example: development
+ */
 router.get("/", (_, res: Response) => {
 	ApiResponse.success(
 		res,
@@ -25,7 +58,37 @@ router.get("/", (_, res: Response) => {
 	);
 });
 
-/***** Health check route *****/
+/**
+ * @swagger
+ * /api/v1/health:
+ *   get:
+ *     summary: Health check route
+ *     description: Checks if the API is running correctly.
+ *     tags: [General]
+ *     responses:
+ *       200:
+ *         description: API status is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: API is running
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                       example: ok
+ */
 router.get("/health", (_, res: Response) => {
 	ApiResponse.success(
 		res,

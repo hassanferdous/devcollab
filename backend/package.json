@@ -39,6 +39,7 @@
 		"@casl/ability": "^6.8.1",
 		"bcrypt": "^6.0.0",
 		"cookie-parser": "^1.4.7",
+		"cors": "^2.8.6",
 		"dotenv": "^17.4.2",
 		"drizzle-orm": "^0.45.2",
 		"drizzle-seed": "^0.3.1",

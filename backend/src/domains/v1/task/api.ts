@@ -20,9 +20,108 @@ const router = express.Router({
 });
 
 /**
- * @route   POST /api/v1/projects/:projectId/tasks
- * @desc    Create a new task record
- * @access  Public
+ * @swagger
+ * components:
+ *   schemas:
+ *     Task:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         title:
+ *           type: string
+ *           example: Design DB schema
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           example: Design schemas for tasks and auth
+ *         status:
+ *           type: string
+ *           enum: [pending, in_progress, completed]
+ *           example: pending
+ *         priority:
+ *           type: string
+ *           enum: [low, medium, high, urgent]
+ *           example: low
+ *         project_id:
+ *           type: integer
+ *           example: 2
+ *         created_by:
+ *           type: integer
+ *           example: 1
+ *         start_date:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         due_date:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/v1/projects/{projectId}/tasks:
+ *   post:
+ *     summary: Create a new task record
+ *     description: Creates a new task within the specified project. Access restricted to project members.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - description
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Implement Auth
+ *               description:
+ *                 type: string
+ *                 example: Setup login and register routes
+ *     responses:
+ *       201:
+ *         description: Successfully created new task
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: Successfully created new task!
+ *                 data:
+ *                   $ref: '#/components/schemas/Task'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - No access to create task
  */
 router.post(
 	"/",
@@ -34,17 +133,16 @@ router.post(
 	projectAccess("Task"),
 	async (req: Request, res: Response) => {
 		const context = getRequestContext(req);
+		const nsp = req.app.get("projectNsp") as Namespace;
 		const data = await TaskServices.create(
 			{
 				...req.body,
 				project_id: req.params.projectId,
 				created_by: req.user!.id!
 			},
-			context
+			context,
+			nsp
 		);
-		const nsp = req.app.get("taskNsp") as Namespace;
-		nsp.to(`project:${req.params.projectId}`).emit("task:created", data);
-
 		ApiResponse.success(
 			res,
 			"Successfully created new task!",
@@ -55,9 +153,47 @@ router.post(
 );
 
 /**
- * @route   GET /api/v1/projects/:projectId/tasks
- * @desc    Retrieve all task records
- * @access  Public
+ * @swagger
+ * /api/v1/projects/{projectId}/tasks:
+ *   get:
+ *     summary: Retrieve all task records for a project
+ *     description: Returns a list of tasks associated with the project. Access restricted to project members.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *     responses:
+ *       200:
+ *         description: Successfully fetched all tasks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Successfully fetched all task!
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Task'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.get(
 	"/",
@@ -77,10 +213,53 @@ router.get(
 );
 
 /**
- * @route   GET /api/v1/projects/:projectId/tasks/:id
- * @desc    Retrieve a single task record by ID
- * @access  Public
- * @param   {number} id - Unique identifier of the resource
+ * @swagger
+ * /api/v1/projects/{projectId}/tasks/{id}:
+ *   get:
+ *     summary: Retrieve a single task record by ID
+ *     description: Returns detailed information for a specific task. Access restricted to project members.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the task
+ *     responses:
+ *       200:
+ *         description: Successfully fetched task
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Successfully fetched task!
+ *                 data:
+ *                   $ref: '#/components/schemas/Task'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Task not found
  */
 router.get(
 	"/:id",
@@ -103,10 +282,62 @@ router.get(
 );
 
 /**
- * @route   PATCH /api/v1/projects/:projectId/tasks/:id
- * @desc    Update an existing task record by ID
- * @access  Public
- * @param   {number} id - Unique identifier of the resource
+ * @swagger
+ * /api/v1/projects/{projectId}/tasks/{id}:
+ *   patch:
+ *     summary: Update an existing task record by ID
+ *     description: Updates properties of a task. Access restricted to project members.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the task
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       202:
+ *         description: Successfully updated task
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 202
+ *                 message:
+ *                   type: string
+ *                   example: Successfully updated task!
+ *                 data:
+ *                   $ref: '#/components/schemas/Task'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.patch(
 	"/:id",
@@ -115,10 +346,12 @@ router.patch(
 	projectAccess("Task"),
 	async (req: Request, res: Response) => {
 		const context = getRequestContext(req);
+		const nsp = req.app.get("projectNsp") as Namespace;
 		const data = await TaskServices.update(
 			{ taskId: +req.params.id, projectId: +req.params.projectId },
 			req.body,
-			context
+			context,
+			nsp
 		);
 		ApiResponse.success(
 			res,
@@ -130,10 +363,35 @@ router.patch(
 );
 
 /**
- * @route   DELETE /api/v1/projects/:projectId/tasks/:id
- * @desc    Delete a specific task record by ID
- * @access  Public
- * @param   {number} id - Unique identifier of the resource
+ * @swagger
+ * /api/v1/projects/{projectId}/tasks/{id}:
+ *   delete:
+ *     summary: Delete a specific task record by ID
+ *     description: Removes a task from the project. Access restricted to project members.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the task
+ *     responses:
+ *       204:
+ *         description: Successfully deleted task
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.delete(
 	"/:id",
@@ -143,9 +401,11 @@ router.delete(
 	async (req: Request, res: Response) => {
 		const { id: taskId, projectId } = req.params;
 		const context = getRequestContext(req);
+		const nsp = req.app.get("projectNsp") as Namespace;
 		const data = await TaskServices.delete(
 			{ taskId: +taskId, projectId: +projectId },
-			context
+			context,
+			nsp
 		);
 		ApiResponse.success(
 			res,

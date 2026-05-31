@@ -34,60 +34,189 @@ import { ${capitalized}Services } from "./service";
 const router = express.Router();
 
 /**
- * @route   POST /api/v1/${collectionName}
- * @desc    Create a new ${collectionName} record
- * @access  Public
+ * @swagger
+ * /api/v1/${collectionName}:
+ *   post:
+ *     summary: Create a new ${collectionName} record
+ *     tags: [${capitalized}]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *             required:
+ *               - name
+ *     responses:
+ *       201:
+ *         description: Successfully created new ${collectionName}
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: Successfully created new ${collectionName}!
+ *                 data:
+ *                   type: object
  */
 router.post("/", async (req: Request, res: Response) => {
    const data = await ${capitalized}Services.create(req.body);
-   ApiResponse.success(res, "Successfully created new ${collectionName}!", StatusCodes.CREATED, data);
+   ApiResponse.success(res, "Successfully created new ${collectionName}!", data, StatusCodes.CREATED);
 });
 
 /**
- * @route   GET /api/v1/${collectionName}
- * @desc    Retrieve all ${collectionName} records
- * @access  Public
+ * @swagger
+ * /api/v1/${collectionName}:
+ *   get:
+ *     summary: Retrieve all ${collectionName} records
+ *     tags: [${capitalized}]
+ *     responses:
+ *       200:
+ *         description: Successfully fetched all ${collectionName}
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Successfully fetched all ${collectionName}!
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
  */
 router.get("/", async (_, res: Response) => {
    const data = await ${capitalized}Services.getAll();
-   ApiResponse.success(res, "Successfully fetched all ${collectionName}!", StatusCodes.OK, data);
+   ApiResponse.success(res, "Successfully fetched all ${collectionName}!", data, StatusCodes.OK);
 });
 
 /**
- * @route   GET /api/v1/${collectionName}/:id
- * @desc    Retrieve a single ${collectionName} record by ID
- * @access  Public
- * @param   {number} id - Unique identifier of the resource
+ * @swagger
+ * /api/v1/${collectionName}/{id}:
+ *   get:
+ *     summary: Retrieve a single ${collectionName} record by ID
+ *     tags: [${capitalized}]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the resource
+ *     responses:
+ *       200:
+ *         description: Successfully fetched ${collectionName}
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Successfully fetched ${collectionName}!
+ *                 data:
+ *                   type: object
  */
 router.get("/:id", async (req: Request, res: Response) => {
    const id = +req.params.id;
    const data = await ${capitalized}Services.getById(id);
-   ApiResponse.success(res, "Successfully fetched ${collectionName}!", StatusCodes.OK, data);
+   ApiResponse.success(res, "Successfully fetched ${collectionName}!", data, StatusCodes.OK);
 });
 
 /**
- * @route   PUT /api/v1/${collectionName}/:id
- * @desc    Update an existing ${collectionName} record by ID
- * @access  Public
- * @param   {number} id - Unique identifier of the resource
+ * @swagger
+ * /api/v1/${collectionName}/{id}:
+ *   put:
+ *     summary: Update an existing ${collectionName} record by ID
+ *     tags: [${capitalized}]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the resource
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       202:
+ *         description: Successfully updated ${collectionName}
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 202
+ *                 message:
+ *                   type: string
+ *                   example: Successfully updated ${collectionName}!
+ *                 data:
+ *                   type: object
  */
 router.put("/:id", async (req: Request, res: Response) => {
    const id = +req.params.id;
    await ${capitalized}Services.update(id, req.body);
    const data = await ${capitalized}Services.getById(id);
-   ApiResponse.success(res, "Successfully updated ${collectionName}!", StatusCodes.ACCEPTED, data);
+   ApiResponse.success(res, "Successfully updated ${collectionName}!", data, StatusCodes.ACCEPTED);
 });
 
 /**
- * @route   DELETE /api/v1/${collectionName}/:id
- * @desc    Delete a specific ${collectionName} record by ID
- * @access  Public
- * @param   {number} id - Unique identifier of the resource
+ * @swagger
+ * /api/v1/${collectionName}/{id}:
+ *   delete:
+ *     summary: Delete a specific ${collectionName} record by ID
+ *     tags: [${capitalized}]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the resource
+ *     responses:
+ *       204:
+ *         description: Successfully deleted ${collectionName}
  */
 router.delete("/:id", async (req: Request, res: Response) => {
    const id = +req.params.id;
    const data = await ${capitalized}Services.delete(id);
-   ApiResponse.success(res, "Successfully deleted ${collectionName}!", StatusCodes.NO_CONTENT, data);
+   ApiResponse.success(res, "Successfully deleted ${collectionName}!", data, StatusCodes.NO_CONTENT);
 });
 
 export default router;
