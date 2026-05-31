@@ -14,7 +14,7 @@ import {
 	FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { useLogin } from "~/hooks/use-auth";
+import { useLogin } from "~/queries/use-auth";
 import type { LoginFormData } from "~/types";
 
 const schema = yup.object({

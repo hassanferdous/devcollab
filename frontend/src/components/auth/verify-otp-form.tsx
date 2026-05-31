@@ -12,7 +12,7 @@ import {
   FormMessage,
 } from '~/components/ui/form'
 import { Input } from '~/components/ui/input'
-import { useVerifyOtp } from '~/hooks/use-auth'
+import { useVerifyOtp } from '~/queries/use-auth'
 import type { VerifyOtpFormData } from '~/types'
 
 const schema = yup.object({

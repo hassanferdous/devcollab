@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { getProjectSocket } from '~/lib/socket'
 import { useAuthStore } from '~/stores/auth'
 import type { Task, TaskCreatedPayload, TaskDeletedPayload, TaskUpdatedPayload } from '~/types'
-import { taskKeys } from './use-tasks'
+import { taskKeys } from '~/queries/use-tasks'
 
 export function useProjectSocket(projectId: number) {
   const qc = useQueryClient()

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { taskApi } from '~/lib/api/tasks'
 import type { UpdateTaskFormData } from '~/types'
 
@@ -9,13 +9,14 @@ export const taskKeys = {
     [...taskKeys.all, 'detail', projectId, taskId] as const,
 }
 
+export const tasksQueryOptions = (projectId: number) => queryOptions({
+  queryKey: taskKeys.lists(projectId),
+  queryFn: () => taskApi.getAll(projectId, { limit: 100 }).then((r) => r.data.data),
+  enabled: !!projectId,
+})
+
 export function useTasks(projectId: number) {
-  return useQuery({
-    queryKey: taskKeys.lists(projectId),
-    queryFn: () =>
-      taskApi.getAll(projectId, { limit: 100 }).then((r) => r.data.data),
-    enabled: !!projectId,
-  })
+  return useQuery(tasksQueryOptions(projectId))
 }
 
 export function useTask(projectId: number, taskId: number) {

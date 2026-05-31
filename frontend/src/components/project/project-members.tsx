@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '~/components/ui/alert-dialog'
-import { useManageMember } from '~/hooks/use-projects'
+import { useManageMember } from '~/queries/use-projects'
 import { userApi } from '~/lib/api/users'
 import { useAuthStore } from '~/stores/auth'
 import type { AddMemberFormData, MemberRole, ProjectMember, User } from '~/types'

@@ -26,14 +26,17 @@ import { Input } from '~/components/ui/input'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import {
+  projectsQueryOptions,
   useCreateProject,
   useDeleteProject,
   useProjects,
   useUpdateProject,
-} from '~/hooks/use-projects'
+} from '~/queries/use-projects'
 import type { CreateProjectFormData, Project } from '~/types'
 
 export const Route = createFileRoute('/_app/projects/')({
+  loader: ({ context: { queryClient } }) =>
+    queryClient.ensureQueryData(projectsQueryOptions),
   component: ProjectsPage,
 })
 

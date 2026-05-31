@@ -15,10 +15,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '~/components/ui/sheet'
-import { useProject } from '~/hooks/use-projects'
-import { useTasks } from '~/hooks/use-tasks'
+import { projectQueryOptions, useProject } from '~/queries/use-projects'
+import { tasksQueryOptions, useTasks } from '~/queries/use-tasks'
 
 export const Route = createFileRoute('/_app/projects/$projectId/')({
+  loader: ({ context: { queryClient }, params }) => {
+    const id = Number(params.projectId)
+    return Promise.all([
+      queryClient.ensureQueryData(projectQueryOptions(id)),
+      queryClient.ensureQueryData(tasksQueryOptions(id)),
+    ])
+  },
   component: ProjectDetailPage,
 })
 

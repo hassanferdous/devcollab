@@ -6,7 +6,7 @@ import {
   LogOut,
   User,
 } from 'lucide-react'
-import { useLogout } from '~/hooks/use-auth'
+import { useLogout } from '~/queries/use-auth'
 import { useAuthStore } from '~/stores/auth'
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar'
 import { Button } from '~/components/ui/button'

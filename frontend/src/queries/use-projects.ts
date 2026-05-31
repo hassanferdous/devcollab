@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { projectApi } from '~/lib/api/projects'
 import type { CreateProjectFormData, MemberRole } from '~/types'
 
@@ -8,19 +8,23 @@ export const projectKeys = {
   detail: (id: number) => [...projectKeys.all, 'detail', id] as const,
 }
 
+export const projectsQueryOptions = queryOptions({
+  queryKey: projectKeys.lists(),
+  queryFn: () => projectApi.getAll().then((r) => r.data.data),
+})
+
+export const projectQueryOptions = (projectId: number) => queryOptions({
+  queryKey: projectKeys.detail(projectId),
+  queryFn: () => projectApi.getById(projectId).then((r) => r.data.data),
+  enabled: !!projectId,
+})
+
 export function useProjects() {
-  return useQuery({
-    queryKey: projectKeys.lists(),
-    queryFn: () => projectApi.getAll().then((r) => r.data.data),
-  })
+  return useQuery(projectsQueryOptions)
 }
 
 export function useProject(projectId: number) {
-  return useQuery({
-    queryKey: projectKeys.detail(projectId),
-    queryFn: () => projectApi.getById(projectId).then((r) => r.data.data),
-    enabled: !!projectId,
-  })
+  return useQuery(projectQueryOptions(projectId))
 }
 
 export function useCreateProject() {

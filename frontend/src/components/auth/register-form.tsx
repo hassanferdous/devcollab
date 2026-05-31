@@ -13,7 +13,7 @@ import {
   FormMessage,
 } from '~/components/ui/form'
 import { Input } from '~/components/ui/input'
-import { useRegister } from '~/hooks/use-auth'
+import { useRegister } from '~/queries/use-auth'
 import type { RegisterFormData } from '~/types'
 
 const schema = yup.object({

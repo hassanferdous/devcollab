@@ -15,7 +15,7 @@ import {
 import { arrayMove } from '@dnd-kit/sortable'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { useCreateTask, useDeleteTask, useUpdateTask } from '~/hooks/use-tasks'
+import { useCreateTask, useDeleteTask, useUpdateTask } from '~/queries/use-tasks'
 import { useProjectSocket } from '~/hooks/use-socket'
 import type { MemberRole, ProjectMember, Task, TaskStatus, UpdateTaskFormData } from '~/types'
 import { KanbanColumn } from './kanban-column'

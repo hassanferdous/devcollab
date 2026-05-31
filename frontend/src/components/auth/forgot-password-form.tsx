@@ -12,7 +12,7 @@ import {
   FormMessage,
 } from '~/components/ui/form'
 import { Input } from '~/components/ui/input'
-import { useForgotPassword } from '~/hooks/use-auth'
+import { useForgotPassword } from '~/queries/use-auth'
 import type { ForgotPasswordFormData } from '~/types'
 
 const schema = yup.object({
