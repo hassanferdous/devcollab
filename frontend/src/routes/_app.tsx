@@ -8,7 +8,6 @@ export const meQueryOptions = queryOptions({
 	queryKey: ["auth", "me"],
 	queryFn: meFn,
 	retry: false,
-	staleTime: 1000,
 });
 
 export const Route = createFileRoute("/_app")({
@@ -20,7 +19,7 @@ export const Route = createFileRoute("/_app")({
 			console.log(" **** 401 = Unauthenticated **** ");
 		}
 
-		if (user) throw redirect({ to: "/login" });
+		if (!user) throw redirect({ to: "/login" });
 	},
 	component: AppLayout,
 });

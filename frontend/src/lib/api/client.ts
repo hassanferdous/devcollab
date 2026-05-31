@@ -46,46 +46,47 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
 	(res) => res,
 	async (error: AxiosError) => {
-		const originalRequest = error.config as InternalAxiosRequestConfig & {
-			_retry?: boolean;
-		};
+		console.log(error.message);
+		// const originalRequest = error.config as InternalAxiosRequestConfig & {
+		// 	_retry?: boolean;
+		// };
 
-		if (error.response?.status !== 401 || originalRequest._retry) {
-			return Promise.reject(error);
-		}
+		// if (error.response?.status !== 401 || originalRequest._retry) {
+		// 	return Promise.reject(error);
+		// }
 
-		if (isRefreshing) {
-			return new Promise((resolve, reject) => {
-				failedQueue.push({ resolve, reject });
-			}).then((token) => {
-				originalRequest.headers.Authorization = `Bearer ${token}`;
-				return api(originalRequest);
-			});
-		}
+		// if (isRefreshing) {
+		// 	return new Promise((resolve, reject) => {
+		// 		failedQueue.push({ resolve, reject });
+		// 	}).then((token) => {
+		// 		originalRequest.headers.Authorization = `Bearer ${token}`;
+		// 		return api(originalRequest);
+		// 	});
+		// }
 
-		originalRequest._retry = true;
-		isRefreshing = true;
+		// originalRequest._retry = true;
+		// isRefreshing = true;
 
-		try {
-			const response = await axios.post(
-				`${API_BASE_URL}/auth/refresh-token`,
-				{},
-				{ withCredentials: true },
-			);
-			const { tokens, user } = response.data.data;
-			useAuthStore.getState().setAuth(user, tokens.access_token);
-			processQueue(null, tokens.access_token);
-			originalRequest.headers.Authorization = `Bearer ${tokens.access_token}`;
-			return api(originalRequest);
-		} catch (refreshError) {
-			processQueue(refreshError as AxiosError, null);
-			useAuthStore.getState().clearAuth();
-			if (typeof window !== "undefined") {
-				window.location.href = "/login";
-			}
-			return Promise.reject(refreshError);
-		} finally {
-			isRefreshing = false;
-		}
+		// try {
+		// 	const response = await axios.post(
+		// 		`${API_BASE_URL}/auth/refresh-token`,
+		// 		{},
+		// 		{ withCredentials: true },
+		// 	);
+		// 	const { tokens, user } = response.data.data;
+		// 	useAuthStore.getState().setAuth(user, tokens.access_token);
+		// 	processQueue(null, tokens.access_token);
+		// 	originalRequest.headers.Authorization = `Bearer ${tokens.access_token}`;
+		// 	return api(originalRequest);
+		// } catch (refreshError) {
+		// 	processQueue(refreshError as AxiosError, null);
+		// 	useAuthStore.getState().clearAuth();
+		// 	if (typeof window !== "undefined") {
+		// 		window.location.href = "/login";
+		// 	}
+		// 	return Promise.reject(refreshError);
+		// } finally {
+		// 	isRefreshing = false;
+		// }
 	},
 );
