@@ -1,9 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { queryClient } from "~/components/providers/query-provider";
-import { authApi } from "~/lib/api";
+import { authApi } from "~/lib/api/auth";
 import { disconnectSocket } from "~/lib/socket";
-import { useAuthStore } from "~/stores/auth.store";
+import { useAuthStore } from "~/stores/auth";
 import type {
 	ForgotPasswordFormData,
 	LoginFormData,
@@ -47,9 +47,9 @@ export function useLogout() {
 		onSuccess: async () => {
 			clearAuth();
 			disconnectSocket();
-			await queryClient.invalidateQueries({ refetchType: "all" });
+			queryClient.removeQueries(); // wipes all cached data immediately
 			await router.invalidate();
-			router.navigate({ to: "/login" });
+			window.location.href = "/login";
 		},
 	});
 }

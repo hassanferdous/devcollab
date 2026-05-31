@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { projectApi } from '~/lib/api'
+import { projectApi } from '~/lib/api/projects'
 import type { CreateProjectFormData, MemberRole } from '~/types'
 
 export const projectKeys = {

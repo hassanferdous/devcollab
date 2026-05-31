@@ -18,7 +18,7 @@ import {
 } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import { useProjects } from '~/hooks/use-projects'
-import { useAuthStore } from '~/stores/auth.store'
+import { useAuthStore } from '~/stores/auth'
 import type { Project } from '~/types'
 
 export const Route = createFileRoute('/_app/dashboard')({

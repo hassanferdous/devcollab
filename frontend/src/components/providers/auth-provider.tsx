@@ -1,6 +1,6 @@
 // src/auth.tsx
 import { createContext, useContext } from "react";
-import { AuthState, useAuthStore } from "~/stores/auth.store";
+import { AuthState, useAuthStore } from "~/stores/auth";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 

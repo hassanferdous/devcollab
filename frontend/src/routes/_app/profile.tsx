@@ -19,8 +19,8 @@ import {
 } from '~/components/ui/form'
 import { Input } from '~/components/ui/input'
 import { Separator } from '~/components/ui/separator'
-import { userApi } from '~/lib/api'
-import { useAuthStore } from '~/stores/auth.store'
+import { userApi } from '~/lib/api/users'
+import { useAuthStore } from '~/stores/auth'
 
 export const Route = createFileRoute('/_app/profile')({
   component: ProfilePage,

@@ -6,7 +6,7 @@ import { ProjectMembers } from '~/components/project/project-members'
 import { AppHeader } from '~/components/layout/app-header'
 import { Button } from '~/components/ui/button'
 import { Skeleton } from '~/components/ui/skeleton'
-import { useAuthStore } from '~/stores/auth.store'
+import { useAuthStore } from '~/stores/auth'
 import type { MemberRole, ProjectMember, Task } from '~/types'
 import {
   Sheet,

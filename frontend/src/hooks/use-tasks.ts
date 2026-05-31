@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { taskApi } from '~/lib/api'
+import { taskApi } from '~/lib/api/tasks'
 import type { UpdateTaskFormData } from '~/types'
 
 export const taskKeys = {

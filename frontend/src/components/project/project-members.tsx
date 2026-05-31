@@ -39,8 +39,8 @@ import {
   AlertDialogTitle,
 } from '~/components/ui/alert-dialog'
 import { useManageMember } from '~/hooks/use-projects'
-import { userApi } from '~/lib/api'
-import { useAuthStore } from '~/stores/auth.store'
+import { userApi } from '~/lib/api/users'
+import { useAuthStore } from '~/stores/auth'
 import type { AddMemberFormData, MemberRole, ProjectMember, User } from '~/types'
 
 const addMemberSchema = yup.object({

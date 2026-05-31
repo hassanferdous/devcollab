@@ -6,13 +6,16 @@ import { meQueryOptions } from "./_app";
 export const Route = createFileRoute("/_auth")({
 	component: AuthLayout,
 	beforeLoad: async ({ context }) => {
-		console.log("checking auth ************");
+		console.log("**** checking auth ************");
+		let user = null;
 		try {
-			const user = await context.queryClient.ensureQueryData(meQueryOptions);
-			console.log(user);
-		} catch (error: any) {
-			console.log(error.message);
+			user = await context.queryClient.fetchQuery(meQueryOptions);
+		} catch (error) {
+			console.log(" ******* unauthenticated ****");
+			return;
 		}
+
+		if (user) throw redirect({ to: "/dashboard" });
 	},
 });
 
