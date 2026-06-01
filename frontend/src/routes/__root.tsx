@@ -32,7 +32,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		],
 		links: [{ rel: "icon", href: "/favicon.ico" }],
 	}),
-	component: RootDocument,
+	shellComponent: RootDocument,
 	notFoundComponent: () => (
 		<div className="min-h-screen flex items-center justify-center">
 			<h1>404</h1>
@@ -42,19 +42,19 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument() {
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="en">
 			<head>
 				<HeadContent />
 			</head>
 			<body>
-				<ThemeProvider>
-					<QueryProvider>
+				<QueryProvider>
+					<ThemeProvider>
 						<TooltipProvider>
 							<Outlet />
 							<Toaster richColors position="top-right" />
 						</TooltipProvider>
-					</QueryProvider>
-				</ThemeProvider>
+					</ThemeProvider>
+				</QueryProvider>
 				<TanStackRouterDevtools position="bottom-right" />
 				<Scripts />
 			</body>
