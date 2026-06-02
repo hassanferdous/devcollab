@@ -2,20 +2,38 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { Home } from "lucide-react";
 import { ThemeToggle } from "~/components/layout/theme-toggle";
 import { meQueryOptions } from "./_app";
+import { createMiddleware, createServerFn } from "@tanstack/react-start";
+import { getCookies } from "@tanstack/react-start/server";
+
+const authMiddleware = createMiddleware({ type: "request" }).server(
+	async ({ next }) => {
+		const cookies = getCookies();
+		if (cookies.access_token && cookies.refresh_token) {
+			return next({ context: { hasToken: true } });
+		}
+		return next({ context: { hasToken: false } });
+	},
+);
+
+const fn = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }) => {
+		if (context.hasToken) {
+			throw redirect({ to: "/dashboard" });
+		}
+		return;
+	});
 
 export const Route = createFileRoute("/_auth")({
 	component: AuthLayout,
 	beforeLoad: async ({ context }) => {
-		console.log("**** checking auth ************");
-		let user = null;
+		await fn();
 		try {
-			user = await context.queryClient.fetchQuery(meQueryOptions);
-		} catch (error) {
-			console.log(" ******* unauthenticated ****");
+			await context.queryClient.fetchQuery(meQueryOptions);
+			throw redirect({ to: "/dashboard" });
+		} catch (err: any) {
 			return;
 		}
-
-		if (user) throw redirect({ to: "/dashboard" });
 	},
 });
 

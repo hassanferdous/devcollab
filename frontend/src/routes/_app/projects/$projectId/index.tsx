@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Users } from "lucide-react";
-import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Users } from "lucide-react";
+import { Suspense, useState } from "react";
 import { KanbanBoard } from "~/components/task/kanban-board";
 import { ProjectMembers } from "~/components/project/project-members";
 import { AppHeader } from "~/components/layout/app-header";
@@ -15,79 +15,144 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from "~/components/ui/sheet";
-import { projectQueryOptions, useProject } from "~/queries/use-projects";
+import {
+	projectQueryOptions,
+	useProjectSuspense,
+} from "~/queries/use-projects";
 import { tasksQueryOptions, useTasks } from "~/queries/use-tasks";
 
 export const Route = createFileRoute("/_app/projects/$projectId/")({
-	loader: ({ context: { queryClient }, params }) => {
+	loader: async ({ context: { queryClient }, params }) => {
 		const id = Number(params.projectId);
 		return Promise.all([
-			queryClient.ensureQueryData(projectQueryOptions(id)),
-			queryClient.ensureQueryData(tasksQueryOptions(id)),
+			queryClient.prefetchQuery(projectQueryOptions(id)),
+			queryClient.prefetchQuery(tasksQueryOptions(id)),
 		]);
 	},
+	pendingMs: 0,
+	pendingComponent: ProjectDetailSkeleton,
 	component: ProjectDetailPage,
 });
+
+function ProjectDetailSkeleton() {
+	return (
+		<>
+			<AppHeader />
+			<div className="flex flex-1 flex-col overflow-hidden">
+				<div className="border-b border-border px-6 py-4 space-y-3">
+					<div className="flex items-center gap-2">
+						<Skeleton className="h-7 w-52" />
+						<Skeleton className="h-5 w-16 rounded-full" />
+					</div>
+					<Skeleton className="h-4 w-80" />
+					<div className="flex items-center gap-4">
+						<Skeleton className="h-4 w-16" />
+						<Skeleton className="h-4 w-24" />
+						<Skeleton className="h-4 w-20" />
+					</div>
+				</div>
+				<div className="flex-1 overflow-auto p-6">
+					<div className="flex gap-4">
+						{Array.from({ length: 3 }).map((_, i) => (
+							<div key={i} className="flex flex-col gap-3 w-72 shrink-0">
+								<Skeleton className="h-8 w-full rounded-lg" />
+								{Array.from({ length: 6 }).map((_, j) => (
+									<Skeleton
+										key={j}
+										className="h-24 w-full rounded-xl"
+									/>
+								))}
+							</div>
+						))}
+					</div>
+				</div>
+			</div>
+		</>
+	);
+}
+
+function TaskCountsSkeleton() {
+	return (
+		<div className="mt-3 flex items-center gap-4">
+			<Skeleton className="h-4 w-14" />
+			<Skeleton className="h-4 w-20" />
+			<Skeleton className="h-4 w-18" />
+		</div>
+	);
+}
+
+function KanbanSkeleton() {
+	return (
+		<div className="flex gap-4">
+			{Array.from({ length: 3 }).map((_, i) => (
+				<div key={i} className="flex flex-col gap-3 w-72 shrink-0">
+					<Skeleton className="h-8 w-full rounded-lg" />
+					{Array.from({ length: 6 }).map((_, j) => (
+						<Skeleton key={j} className="h-24 w-full rounded-xl" />
+					))}
+				</div>
+			))}
+		</div>
+	);
+}
+
+function TaskCounts({ projectId }: { projectId: number }) {
+	const { data: tasksData } = useTasks(projectId);
+	const tasks = tasksData?.data ?? [];
+	return (
+		<div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+			<span className="flex items-center gap-1">
+				<span className="size-2 rounded-full bg-slate-400" />
+				{tasks.filter((t: Task) => t.status === "pending").length} to do
+			</span>
+			<span className="flex items-center gap-1">
+				<span className="size-2 rounded-full bg-blue-400" />
+				{tasks.filter((t: Task) => t.status === "in_progress").length} in
+				progress
+			</span>
+			<span className="flex items-center gap-1">
+				<span className="size-2 rounded-full bg-green-400" />
+				{tasks.filter((t: Task) => t.status === "completed").length}{" "}
+				completed
+			</span>
+		</div>
+	);
+}
+
+function KanbanSection({
+	projectId,
+	members,
+	userRole,
+}: {
+	projectId: number;
+	members: ProjectMember[];
+	userRole: MemberRole | undefined;
+}) {
+	const { data: tasksData } = useTasks(projectId);
+	const tasks = tasksData?.data ?? [];
+	return (
+		<KanbanBoard
+			projectId={projectId}
+			tasks={tasks}
+			members={members}
+			userRole={userRole}
+		/>
+	);
+}
 
 function ProjectDetailPage() {
 	const { projectId } = Route.useParams();
 	const id = parseInt(projectId);
 	const [membersOpen, setMembersOpen] = useState(false);
 
-	const { data: project, isLoading: projectLoading } = useProject(id);
-	const { data: tasksData, isLoading: tasksLoading } = useTasks(id);
+	const { data: project } = useProjectSuspense(id);
 	const { user } = useAuthStore();
 
-	const tasks = tasksData?.data ?? [];
-
-	const taskCounts = {
-		pending: tasks.filter((t: Task) => t.status === "pending").length,
-		in_progress: tasks.filter((t: Task) => t.status === "in_progress").length,
-		completed: tasks.filter((t: Task) => t.status === "completed").length,
-	};
-
-	if (projectLoading) {
-		return (
-			<>
-				<AppHeader />
-				<div className="p-6 space-y-4">
-					<Skeleton className="h-8 w-64" />
-					<Skeleton className="h-4 w-96" />
-					<div className="flex gap-4 mt-6">
-						<Skeleton className="h-[500px] w-72 rounded-xl" />
-						<Skeleton className="h-[500px] w-72 rounded-xl" />
-						<Skeleton className="h-[500px] w-72 rounded-xl" />
-					</div>
-				</div>
-			</>
-		);
-	}
-
-	if (!project) {
-		return (
-			<>
-				<AppHeader />
-				<div className="flex flex-col items-center gap-4 p-20">
-					<p className="text-muted-foreground">Project not found</p>
-					<Button variant="outline" asChild>
-						<Link to="/projects">
-							<ArrowLeft className="size-4" />
-							Back to projects
-						</Link>
-					</Button>
-				</div>
-			</>
-		);
-	}
-
-	const members: ProjectMember[] = project.members ?? [];
-
-	// project.role is only populated from the list endpoint; derive it from members for detail view
+	const members: ProjectMember[] = project?.members ?? [];
 	const userMember = members.find((m) => m.user_id === user?.id);
-	const effectiveRole = (project.role ?? userMember?.role) as
+	const effectiveRole = (project?.role ?? userMember?.role) as
 		| MemberRole
 		| undefined;
-
 	const canManage = effectiveRole === "admin";
 
 	return (
@@ -147,37 +212,19 @@ function ProjectDetailPage() {
 						</div>
 					</div>
 
-					<div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-						<span className="flex items-center gap-1">
-							<span className="size-2 rounded-full bg-slate-400" />
-							{taskCounts.pending} to do
-						</span>
-						<span className="flex items-center gap-1">
-							<span className="size-2 rounded-full bg-blue-400" />
-							{taskCounts.in_progress} in progress
-						</span>
-						<span className="flex items-center gap-1">
-							<span className="size-2 rounded-full bg-green-400" />
-							{taskCounts.completed} completed
-						</span>
-					</div>
+					<Suspense fallback={<TaskCountsSkeleton />}>
+						<TaskCounts projectId={id} />
+					</Suspense>
 				</div>
 
 				<div className="flex-1 overflow-auto p-6">
-					{tasksLoading ? (
-						<div className="flex gap-4">
-							{Array.from({ length: 3 }).map((_, i) => (
-								<Skeleton key={i} className="h-64 w-72 rounded-xl" />
-							))}
-						</div>
-					) : (
-						<KanbanBoard
+					<Suspense fallback={<KanbanSkeleton />}>
+						<KanbanSection
 							projectId={id}
-							tasks={tasks}
 							members={members}
 							userRole={effectiveRole}
 						/>
-					)}
+					</Suspense>
 				</div>
 			</div>
 		</>

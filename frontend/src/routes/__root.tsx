@@ -38,6 +38,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			<h1>404</h1>
 		</div>
 	),
+	errorComponent: ({ error }) => (
+		<div className="min-h-screen flex items-center justify-center">
+			<h1>{error.message}</h1>
+		</div>
+	),
 });
 
 function RootDocument() {
@@ -48,12 +53,12 @@ function RootDocument() {
 			</head>
 			<body>
 				<QueryProvider>
-					<ThemeProvider>
-						<TooltipProvider>
-							<Outlet />
-							<Toaster richColors position="top-right" />
-						</TooltipProvider>
-					</ThemeProvider>
+					<TooltipProvider>
+						<Outlet />
+						<Toaster richColors position="top-right" />
+					</TooltipProvider>
+					{/* <ThemeProvider>
+					</ThemeProvider> */}
 				</QueryProvider>
 				<TanStackRouterDevtools position="bottom-right" />
 				<Scripts />

@@ -46,15 +46,13 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
 	(res) => res,
 	async (error: AxiosError) => {
-		console.log(error.message);
+		// console.log(error.message);
 		// const originalRequest = error.config as InternalAxiosRequestConfig & {
 		// 	_retry?: boolean;
 		// };
-
 		// if (error.response?.status !== 401 || originalRequest._retry) {
 		// 	return Promise.reject(error);
 		// }
-
 		// if (isRefreshing) {
 		// 	return new Promise((resolve, reject) => {
 		// 		failedQueue.push({ resolve, reject });
@@ -63,10 +61,8 @@ api.interceptors.response.use(
 		// 		return api(originalRequest);
 		// 	});
 		// }
-
 		// originalRequest._retry = true;
 		// isRefreshing = true;
-
 		// try {
 		// 	const response = await axios.post(
 		// 		`${API_BASE_URL}/auth/refresh-token`,

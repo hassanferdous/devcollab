@@ -16,7 +16,7 @@ export const projectKeys = {
 
 export const projectsQueryOptions = queryOptions({
 	queryKey: projectKeys.lists(),
-	queryFn: () => projectApi.getAll().then((r) => r.data.data),
+	queryFn: async () => projectApi.getAll().then((r) => r.data.data),
 });
 
 export const projectQueryOptions = (projectId: number) =>
@@ -32,6 +32,10 @@ export function useProjects() {
 
 export function useProject(projectId: number) {
 	return useQuery(projectQueryOptions(projectId));
+}
+
+export function useProjectSuspense(projectId: number) {
+	return useSuspenseQuery(projectQueryOptions(projectId));
 }
 
 export function useCreateProject() {

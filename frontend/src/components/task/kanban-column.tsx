@@ -18,27 +18,18 @@ import { TaskForm } from "./task-form";
 import type { ProjectMember, Task, TaskStatus } from "~/types";
 import { cn } from "~/lib/utils";
 
-const columnConfig: Record<
-	TaskStatus,
-	{ title: string; color: string; headerColor: string; dot: string }
-> = {
+const columnConfig: Record<TaskStatus, { title: string; dot: string }> = {
 	pending: {
 		title: "To Do",
-		color: "bg-slate-50 dark:bg-slate-900/40",
-		headerColor: "text-slate-700 dark:text-slate-300",
 		dot: "bg-slate-400",
 	},
 	in_progress: {
 		title: "In Progress",
-		color: "bg-blue-50/60 dark:bg-blue-950/30",
-		headerColor: "text-blue-700 dark:text-blue-400",
-		dot: "bg-blue-400",
+		dot: "bg-blue-500",
 	},
 	completed: {
 		title: "Completed",
-		color: "bg-green-50/60 dark:bg-green-950/20",
-		headerColor: "text-green-700 dark:text-green-400",
-		dot: "bg-green-400",
+		dot: "bg-emerald-500",
 	},
 };
 
@@ -75,20 +66,20 @@ export function KanbanColumn({
 		<div
 			ref={setNodeRef}
 			className={cn(
-				"flex w-72 shrink-0 flex-col rounded-xl border transition-all duration-150",
-				config.color,
-				isOver
-					? "ring-2 ring-primary/40 border-primary/30"
-					: "border-border/60",
+				"flex w-[272px] shrink-0 flex-col rounded-xl transition-all duration-150",
+				"bg-[#f1f2f4] dark:bg-[#1d2125]",
+				isOver && "ring-2 ring-primary/50 ring-offset-1",
 			)}>
 			{/* Column header */}
 			<div className="flex items-center justify-between px-3 pt-3 pb-2">
-				<div className="flex items-center gap-2">
-					<span className={cn("size-2 rounded-full", config.dot)} />
-					<h3 className={cn("text-sm font-semibold", config.headerColor)}>
+				<div className="flex items-center gap-2 min-w-0">
+					<span
+						className={cn("size-2 rounded-full shrink-0", config.dot)}
+					/>
+					<h3 className="text-sm font-semibold text-foreground truncate">
 						{config.title}
 					</h3>
-					<span className="rounded-full bg-background/80 px-1.5 py-0.5 text-xs font-medium text-muted-foreground shadow-sm border border-border/40">
+					<span className="rounded-md bg-black/10 dark:bg-white/10 px-1.5 py-0.5 text-xs font-medium text-foreground/60 leading-none">
 						{tasks.length}
 					</span>
 				</div>
@@ -98,8 +89,8 @@ export function KanbanColumn({
 							<Button
 								variant="ghost"
 								size="icon-xs"
-								className="text-muted-foreground hover:text-foreground">
-								<Plus className="size-3.5" />
+								className="text-foreground/50 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground rounded-md">
+								<Plus className="size-4" />
 							</Button>
 						</DialogTrigger>
 						<DialogContent>
@@ -118,8 +109,8 @@ export function KanbanColumn({
 
 			{/* Task list */}
 			<div
-				className="flex-1 overflow-y-auto px-3 pb-3 pt-1"
-				style={{ maxHeight: "calc(100vh - 280px)" }}>
+				className="flex-1 overflow-y-auto px-2 py-1"
+				style={{ maxHeight: "calc(100vh - 312px)" }}>
 				<SortableContext
 					items={tasks.map((t) => t.id)}
 					strategy={verticalListSortingStrategy}>
@@ -134,8 +125,8 @@ export function KanbanColumn({
 							/>
 						))}
 						{tasks.length === 0 && (
-							<div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-border/60">
-								<p className="text-xs text-muted-foreground">
+							<div className="flex h-16 items-center justify-center rounded-lg border-2 border-dashed border-black/10 dark:border-white/10">
+								<p className="text-xs text-foreground/40">
 									{canEdit ? "Drop tasks here" : "No tasks"}
 								</p>
 							</div>
@@ -143,6 +134,19 @@ export function KanbanColumn({
 					</div>
 				</SortableContext>
 			</div>
+
+			{/* Add a card button */}
+			{canEdit && (
+				<div className="px-2 py-2">
+					<Button
+						variant="ghost"
+						onClick={() => setCreateOpen(true)}
+						className="w-full justify-start gap-2 rounded-lg text-foreground/60 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground h-8 px-2 text-sm font-normal">
+						<Plus className="size-4 shrink-0" />
+						Add a card
+					</Button>
+				</div>
+			)}
 		</div>
 	);
 }

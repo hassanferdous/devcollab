@@ -6,10 +6,15 @@ import {
 	LogOut,
 	User,
 } from "lucide-react";
-import { useLogout } from "~/queries/use-auth";
-import { useAuthStore } from "~/stores/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import {
 	Sidebar,
 	SidebarContent,
@@ -22,14 +27,8 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "~/components/ui/sidebar";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { cn } from "~/lib/utils";
+import { useLogout } from "~/queries/use-auth";
+import { useAuthStore } from "~/stores/auth";
 
 const navItems = [
 	{ title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -51,7 +50,7 @@ export function AppSidebar() {
 	const matchRoute = useMatchRoute();
 
 	return (
-		<Sidebar>
+		<Sidebar className="border-border">
 			<SidebarHeader className="h-16 justify-center border-b border-border px-4">
 				<Link to="/dashboard" className="flex items-center gap-2.5">
 					<div className="flex size-8 items-center justify-center rounded-lg bg-primary">

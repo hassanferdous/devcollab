@@ -1,18 +1,11 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { LoginForm } from "~/components/auth/login-form";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { authApi } from "~/lib/api/auth";
-import { useAuthStore } from "~/stores/auth";
 
 export const Route = createFileRoute("/_auth/login")({
 	component: LoginPage,
-	beforeLoad: () => {
-		const { isAuthenticated } = useAuthStore.getState();
-		if (isAuthenticated) {
-			throw redirect({ to: "/dashboard" });
-		}
-	},
 });
 
 function LoginPage() {

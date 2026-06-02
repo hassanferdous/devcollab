@@ -36,9 +36,30 @@ import type { CreateProjectFormData, Project } from "~/types";
 
 export const Route = createFileRoute("/_app/projects/")({
 	loader: ({ context: { queryClient } }) =>
-		queryClient.ensureQueryData(projectsQueryOptions),
+		queryClient.prefetchQuery(projectsQueryOptions),
+	pendingMs: 0,
+	pendingComponent: ProjectsPageSkeleton,
 	component: ProjectsPage,
 });
+
+function ProjectsPageSkeleton() {
+	return (
+		<>
+			<AppHeader title="Projects" />
+			<div className="flex-1 space-y-5 p-6">
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<Skeleton className="h-9 w-64 rounded-md" />
+					<Skeleton className="h-9 w-56 rounded-md" />
+				</div>
+				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					{Array.from({ length: 6 }).map((_, i) => (
+						<Skeleton key={i} className="h-40 w-full rounded-xl" />
+					))}
+				</div>
+			</div>
+		</>
+	);
+}
 
 function ProjectsPage() {
 	const [createOpen, setCreateOpen] = useState(false);
@@ -49,7 +70,7 @@ function ProjectsPage() {
 		"all" | "active" | "archived"
 	>("all");
 
-	const { data: projects, isLoading } = useProjects();
+	const { data: projects } = useProjects();
 	const { mutate: createProject, isPending: isCreating } = useCreateProject();
 	const { mutate: updateProject, isPending: isUpdating } = useUpdateProject(
 		editProject?.id ?? 0,
