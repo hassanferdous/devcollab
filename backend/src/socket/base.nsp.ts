@@ -1,5 +1,6 @@
 import redisClient from "@/config/redis";
 import { User } from "@/domains/v1/user/service";
+import { CookieUtil } from "@/utils/cookie";
 import { throwError } from "@/utils/error";
 import JWT from "@/utils/jwt";
 import { StatusCodes } from "http-status-codes";
@@ -16,8 +17,14 @@ export abstract class BaseNamespace {
 	private applyMiddleware() {
 		this.nsp.use(
 			async (socket: Socket, next: (err?: ExtendedError) => void) => {
-				const token = socket.handshake.auth.token;
+				const cookies = CookieUtil.parseCookieString(
+					socket.handshake.headers.cookie
+				);
+				const token = cookies.access_token || socket.handshake.auth.token;
 				try {
+					if (!token) {
+						throwError("Invalid Token", StatusCodes.UNAUTHORIZED);
+					}
 					const decoded = JWT.verifyToken(token, "access") as User &
 						JwtPayload;
 					/**

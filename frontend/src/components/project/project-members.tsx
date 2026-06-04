@@ -253,17 +253,17 @@ export function ProjectMembers({
 						key={member.user_id}
 						className="flex items-center gap-3 px-4 py-3">
 						<Avatar className="size-8 shrink-0">
-							<AvatarImage src={member.user?.avatar ?? undefined} />
+							<AvatarImage src={undefined} />
 							<AvatarFallback className="text-xs">
-								{member.user ? getInitials(member.user.name) : "?"}
+								{member.name ? getInitials(member.name) : "?"}
 							</AvatarFallback>
 						</Avatar>
 						<div className="min-w-0 flex-1">
 							<p className="truncate text-sm font-medium">
-								{member.user?.name ?? `User #${member.user_id}`}
+								{member.name ?? `User #${member.user_id}`}
 							</p>
 							<p className="truncate text-xs text-muted-foreground">
-								{member.user?.email}
+								{member.email}
 							</p>
 						</div>
 						<span
@@ -297,8 +297,7 @@ export function ProjectMembers({
 						<AlertDialogDescription>
 							This will remove{" "}
 							<span className="font-medium text-foreground">
-								{removeTarget?.user?.name ??
-									`User #${removeTarget?.user_id}`}
+								{removeTarget?.name ?? `User #${removeTarget?.user_id}`}
 							</span>{" "}
 							from the project. They will lose access immediately.
 						</AlertDialogDescription>

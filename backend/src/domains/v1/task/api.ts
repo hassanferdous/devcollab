@@ -14,6 +14,7 @@ import {
 	updateTaskSchema
 } from "./validation";
 import { Namespace } from "socket.io";
+import { paginationSchema } from "@/validator/pagination";
 
 const router = express.Router({
 	mergeParams: true
@@ -198,11 +199,18 @@ router.post(
 router.get(
 	"/",
 	auth,
-	validate({ params: projectIdSchema }),
+	validate({ params: projectIdSchema, query: paginationSchema }),
 	projectAccess("Task"),
 	async (req: Request, res: Response) => {
 		const projectId = +req.params.projectId;
-		const data = await TaskServices.getAll(projectId);
+		const queryParams = req.query as unknown as {
+			limit?: number;
+			page?: number;
+		};
+		const data = await TaskServices.getAll(projectId, {
+			limit: queryParams.limit,
+			page: queryParams.page
+		});
 		ApiResponse.success(
 			res,
 			"Successfully fetched all task!",

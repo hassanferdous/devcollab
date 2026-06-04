@@ -1,4 +1,5 @@
 import db from "@/config/db";
+import { usersTable } from "@/db/user.schema";
 import { throwError } from "@/utils/error";
 import {
 	projectMembersTable,
@@ -12,8 +13,8 @@ import {
 	type InferSelectModel
 } from "drizzle-orm";
 import { StatusCodes } from "http-status-codes";
-import defineAbilityFor, { MemberAbilityContext } from "./ability";
 import { UserServices } from "../user/service";
+import defineAbilityFor, { MemberAbilityContext } from "./ability";
 
 export type Project = InferSelectModel<typeof projectsTable>;
 export type NewProject = InferInsertModel<typeof projectsTable>;
@@ -231,15 +232,18 @@ export const ProjectServices = {
 	getMembers: async (
 		projectId: number
 	): Promise<Omit<ProjectMember, "id" | "project_id">[]> => {
-		const result = await db
+		const data = await db
 			.select({
 				user_id: projectMembersTable.user_id,
 				role: projectMembersTable.role,
-				joined_at: projectMembersTable.joined_at
+				joined_at: projectMembersTable.joined_at,
+				name: usersTable.name,
+				email: usersTable.email
 			})
 			.from(projectMembersTable)
+			.leftJoin(usersTable, eq(projectMembersTable.user_id, usersTable.id))
 			.where(eq(projectMembersTable.project_id, projectId));
-		return result;
+		return data;
 	},
 
 	/**

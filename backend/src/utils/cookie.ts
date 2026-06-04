@@ -24,4 +24,18 @@ export class CookieUtil {
 			res.clearCookie(key);
 		});
 	}
+
+	static parseCookieString(cookieString: string | undefined): Record<string, string> {
+		const cookies: Record<string, string> = {};
+		if (!cookieString) return cookies;
+		cookieString.split(";").forEach((cookie) => {
+			const parts = cookie.split("=");
+			const name = parts[0].trim();
+			const value = parts.slice(1).join("=").trim();
+			if (name) {
+				cookies[name] = decodeURIComponent(value);
+			}
+		});
+		return cookies;
+	}
 }

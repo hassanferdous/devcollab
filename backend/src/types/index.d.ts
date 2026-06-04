@@ -13,5 +13,5 @@ declare global {
 
 export interface PaginatedData<T> {
 	data: T[];
-	pagination: PaginationMeta;
+	pagination?: PaginationMeta;
 }

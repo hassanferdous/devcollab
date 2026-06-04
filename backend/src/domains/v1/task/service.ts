@@ -84,7 +84,10 @@ export const TaskServices = {
 	 *
 	 * @returns {Promise<Task[]>} An array of all compiled records
 	 */
-	getAll: async (projectId: number): Promise<PaginatedData<Task>> => {
+	getAll: async (
+		projectId: number,
+		{ page, limit }: { page?: number; limit?: number }
+	): Promise<PaginatedData<Task>> => {
 		const query = db
 			.select({ record: tasksTable, count: sql<number>`count(*) over()` })
 			.from(tasksTable)
@@ -92,8 +95,8 @@ export const TaskServices = {
 		const dynamicQuery = query.$dynamic();
 		const data = (await withPaginationOptions(
 			dynamicQuery,
-			1,
-			10
+			page,
+			limit
 		)) as PaginatedData<Task>;
 		return data;
 	},
