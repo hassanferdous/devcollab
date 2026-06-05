@@ -1,13 +1,12 @@
-import { addDays, format } from "date-fns";
+import { format } from "date-fns";
 import {
 	AlignLeft,
-	ArrowRight,
 	CalendarClock,
-	Calendar as CalendarIcon,
 	CalendarPlus,
 	CheckSquare,
 	ChevronDown,
 	Circle,
+	Flag,
 	Image,
 	MessageSquare,
 	MoreHorizontal,
@@ -19,10 +18,11 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { DateRange } from "react-day-picker";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "~/components/ui/dialog";
 import { Calendar } from "~/components/ui/calendar";
+import { Dialog, DialogContent, DialogTitle } from "~/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -31,16 +31,10 @@ import {
 } from "~/components/ui/dropdown-menu";
 import {
 	Popover,
+	PopoverClose,
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import type {
@@ -50,9 +44,6 @@ import type {
 	TaskStatus,
 	UpdateTaskFormData,
 } from "~/types";
-import { DateRange } from "react-day-picker";
-import { ButtonGroup } from "../ui/button-group";
-import { Separator } from "../ui/separator";
 
 function getInitials(name: string) {
 	return name
@@ -65,9 +56,9 @@ function getInitials(name: string) {
 
 const statusConfig: Record<TaskStatus, { label: string; badgeCls: string }> = {
 	pending: {
-		label: "To Do",
+		label: "Pending",
 		badgeCls:
-			"bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600",
+			"bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 dark:hover:bg-yellow-900/60",
 	},
 	in_progress: {
 		label: "In Progress",
@@ -81,11 +72,34 @@ const statusConfig: Record<TaskStatus, { label: string; badgeCls: string }> = {
 	},
 };
 
-const priorityConfig: Record<TaskPriority, { label: string; dot: string }> = {
-	low: { label: "Low", dot: "bg-slate-400" },
-	medium: { label: "Medium", dot: "bg-yellow-400" },
-	high: { label: "High", dot: "bg-orange-400" },
-	urgent: { label: "Urgent", dot: "bg-red-500" },
+const priorityConfig: Record<
+	TaskPriority,
+	{ label: string; dot: string; flag: string; pill: string }
+> = {
+	low: {
+		label: "Low",
+		dot: "bg-slate-400",
+		flag: "text-slate-400",
+		pill: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700",
+	},
+	medium: {
+		label: "Medium",
+		dot: "bg-yellow-400",
+		flag: "text-yellow-500",
+		pill: "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800 dark:hover:bg-yellow-900/50",
+	},
+	high: {
+		label: "High",
+		dot: "bg-orange-400",
+		flag: "text-orange-500",
+		pill: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-900/50",
+	},
+	urgent: {
+		label: "Urgent",
+		dot: "bg-red-500",
+		flag: "text-red-500",
+		pill: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50",
+	},
 };
 
 interface TaskDetailProps {
@@ -225,6 +239,7 @@ export function TaskDetail({
 						{/* Title */}
 						<div className="flex items-start gap-3">
 							<Circle className="mt-1.5 size-5 text-muted-foreground shrink-0" />
+
 							<Textarea
 								value={title}
 								onChange={(e) => setTitle(e.target.value)}
@@ -234,7 +249,7 @@ export function TaskDetail({
 								}
 								placeholder="Task title"
 								disabled={isUpdating}
-								className="w-full resize-none h-auto min-h-auto p-0 border-none font-semibold text-xl!"
+								className="w-full resize-none h-auto min-h-auto rounded p-0 border-none font-semibold text-xl! dark:bg-transparent"
 							/>
 						</div>
 
@@ -254,70 +269,238 @@ export function TaskDetail({
 								</Button>
 							))}
 
+							{/* Start date pill */}
 							<Popover>
 								<PopoverTrigger asChild>
-									<Button variant="accent">
-										<CalendarPlus className="size-3.5" />
-										Start Date
-										<ArrowRight className="size-3" />
-										<CalendarClock className="size-3.5" />
-										Due Date
-									</Button>
+									<button
+										disabled={!canEdit || isUpdating}
+										className={cn(
+											"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
+											dateRange?.from
+												? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+												: "bg-accent text-accent-foreground border-border hover:bg-accent/80",
+										)}>
+										<CalendarPlus className="size-3.5 shrink-0" />
+										<span>
+											{dateRange?.from
+												? format(dateRange.from, "MMM d")
+												: "Start date"}
+										</span>
+										{dateRange?.from && (
+											<span
+												role="button"
+												aria-label="Clear due date"
+												tabIndex={0}
+												onClick={(e) => {
+													e.stopPropagation();
+													setDateRange((prev) => ({
+														...prev,
+														from: undefined,
+													}));
+												}}
+												className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100 transition-opacity">
+												<X className="size-2.5" />
+											</span>
+										)}
+									</button>
 								</PopoverTrigger>
-								<PopoverContent align="start" className="w-auto">
+								<PopoverTrigger asChild>
+									<button
+										disabled={!canEdit || isUpdating}
+										className={cn(
+											"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
+											dateRange?.to
+												? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
+												: "bg-accent text-accent-foreground border-border hover:bg-accent/80",
+										)}>
+										<CalendarClock className="size-3.5 shrink-0" />
+										<span>
+											{dateRange?.to
+												? format(dateRange.to, "MMM d")
+												: "Due date"}
+										</span>
+										{dateRange?.to && (
+											<span
+												role="button"
+												aria-label="Clear due date"
+												tabIndex={0}
+												onClick={(e) => {
+													e.stopPropagation();
+													setDateRange((prev) => ({
+														from: prev?.from,
+														to: undefined,
+													}));
+												}}
+												className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100 transition-opacity">
+												<X className="size-2.5" />
+											</span>
+										)}
+									</button>
+								</PopoverTrigger>
+								<PopoverContent
+									align="end"
+									className="w-auto p-0 overflow-hidden">
+									<Calendar
+										selected={dateRange}
+										captionLayout="label"
+										classNames={{
+											root: "w-full",
+										}}
+										mode="range"
+										onSelect={setDateRange}
+									/>
+									<div className="flex items-center justify-end gap-2 px-3 py-1.5 border-t border-border bg-muted/30">
+										<button
+											type="button"
+											onClick={() =>
+												setDateRange({
+													from: undefined,
+													to: undefined,
+												})
+											}
+											className="text-xs text-muted-foreground hover:text-destructive transition-colors font-medium px-2 py-1 rounded-md hover:bg-destructive/10">
+											Clear
+										</button>
+										<PopoverClose asChild>
+											<Button
+												className="py-1 h-auto text-xs"
+												disabled={!dateRange?.from}
+												type="button">
+												Save
+											</Button>
+										</PopoverClose>
+									</div>
+								</PopoverContent>
+							</Popover>
+
+							{/* Due date pill (shows to-date from the same range) */}
+							{/* <Popover>
+								<PopoverTrigger asChild>
+									<button
+										disabled={!canEdit || isUpdating}
+										className={cn(
+											"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
+											dateRange?.to
+												? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
+												: "bg-accent text-accent-foreground border-border hover:bg-accent/80",
+										)}>
+										<CalendarClock className="size-3.5 shrink-0" />
+										<span>
+											{dateRange?.to
+												? format(dateRange.to, "MMM d")
+												: "Due date"}
+										</span>
+										{dateRange?.to && (
+											<span
+												role="button"
+												aria-label="Clear due date"
+												tabIndex={0}
+												onClick={(e) => {
+													e.stopPropagation();
+													setDateRange((prev) => ({
+														from: prev?.from,
+														to: undefined,
+													}));
+												}}
+												className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100 transition-opacity">
+												<X className="size-2.5" />
+											</span>
+										)}
+									</button>
+								</PopoverTrigger>
+								<PopoverContent
+									align="start"
+									className="w-auto p-0 overflow-hidden">
 									<Calendar
 										selected={dateRange}
 										onSelect={setDateRange}
 										mode="range"
+										captionLayout="label"
+										classNames={{
+											root: "w-full",
+										}}
 									/>
+									<div className="flex items-center justify-end gap-2 px-3 py-1.5 border-t border-border bg-muted/30">
+										<button
+											type="button"
+											onClick={() =>
+												setDateRange({
+													from: undefined,
+													to: undefined,
+												})
+											}
+											className="text-xs text-muted-foreground hover:text-destructive transition-colors font-medium px-2 py-1 rounded-md hover:bg-destructive/10">
+											Clear
+										</button>
+										<PopoverClose asChild>
+											<Button
+												className="py-1 h-auto text-xs"
+												disabled={!dateRange?.to}
+												type="button">
+												Save
+											</Button>
+										</PopoverClose>
+									</div>
 								</PopoverContent>
-							</Popover>
-							<ButtonGroup>
-								<Button className="pr-0" variant="accent" aria-haspopup>
-									Priority
-									<ArrowRight className="size-3" />
-								</Button>
-								<Select
-									value={task.priority}
-									onValueChange={(val) => {
-										if (canEdit)
-											onUpdate(task.id, {
-												priority: val as TaskPriority,
-											});
-									}}
-									disabled={!canEdit || isUpdating}>
-									<SelectTrigger className="bg-accent text-accent-foreground font-medium border-accent w-auto pl-2">
-										<SelectValue>
-											<span className="flex items-center gap-1.5">
-												<span
+							</Popover> */}
+
+							{/* Priority pill – DropdownMenu */}
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<button
+										disabled={!canEdit || isUpdating}
+										className={cn(
+											"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
+											priorityConfig[task.priority].pill,
+										)}>
+										<Flag
+											className={cn(
+												"size-3 shrink-0",
+												priorityConfig[task.priority].flag,
+											)}
+										/>
+										{priorityConfig[task.priority].label}
+										<ChevronDown className="size-3 opacity-60" />
+									</button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent
+									align="start"
+									className="min-w-[160px]">
+									<div className="px-2 py-1.5 mb-1">
+										<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+											Set priority
+										</p>
+									</div>
+									{(Object.keys(priorityConfig) as TaskPriority[]).map(
+										(p) => (
+											<DropdownMenuItem
+												key={p}
+												className={cn(
+													"cursor-pointer gap-2 rounded-md",
+													task.priority === p &&
+														"bg-accent font-semibold",
+												)}
+												onClick={() => {
+													if (canEdit && task.priority !== p)
+														onUpdate(task.id, { priority: p });
+												}}>
+												<Flag
 													className={cn(
-														"size-2 rounded-full",
-														priorityConfig[task.priority]?.dot,
+														"size-3.5 shrink-0",
+														priorityConfig[p].flag,
 													)}
 												/>
-												{priorityConfig[task.priority]?.label}
-											</span>
-										</SelectValue>
-									</SelectTrigger>
-									<SelectContent>
-										{(
-											Object.keys(priorityConfig) as TaskPriority[]
-										).map((p) => (
-											<SelectItem key={p} value={p}>
-												<span className="flex items-center gap-1.5">
-													<span
-														className={cn(
-															"size-2 rounded-full",
-															priorityConfig[p].dot,
-														)}
-													/>
-													{priorityConfig[p].label}
-												</span>
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</ButtonGroup>
+												<span>{priorityConfig[p].label}</span>
+												{task.priority === p && (
+													<span className="ml-auto text-[10px] font-medium bg-muted rounded px-1 py-0.5">
+														active
+													</span>
+												)}
+											</DropdownMenuItem>
+										),
+									)}
+								</DropdownMenuContent>
+							</DropdownMenu>
 						</div>
 
 						{/* Members */}

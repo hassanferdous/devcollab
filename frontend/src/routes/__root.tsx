@@ -53,12 +53,12 @@ function RootDocument() {
 			</head>
 			<body>
 				<QueryProvider>
-					<TooltipProvider>
-						<Outlet />
-						<Toaster richColors position="top-right" />
-					</TooltipProvider>
-					{/* <ThemeProvider>
-					</ThemeProvider> */}
+					<ThemeProvider>
+						<TooltipProvider>
+							<Outlet />
+							<Toaster richColors position="top-right" />
+						</TooltipProvider>
+					</ThemeProvider>
 				</QueryProvider>
 				<TanStackRouterDevtools position="bottom-right" />
 				<Scripts />

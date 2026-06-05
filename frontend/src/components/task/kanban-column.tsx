@@ -67,7 +67,7 @@ export function KanbanColumn({
 			ref={setNodeRef}
 			className={cn(
 				"flex w-[272px] shrink-0 flex-col rounded-xl transition-all duration-150",
-				"bg-[#f1f2f4] dark:bg-[#1d2125]",
+				"bg-accent",
 				isOver && "ring-2 ring-primary/50 ring-offset-1",
 			)}>
 			{/* Column header */}

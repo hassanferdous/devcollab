@@ -3,6 +3,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { createMiddleware, createServerFn } from "@tanstack/react-start";
 import { getCookies, getRequestHeaders } from "@tanstack/react-start/server";
 import { AppSidebar } from "~/components/layout/app-sidebar";
+import { queryClient } from "~/components/providers/query-provider";
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 import { meFn } from "~/server/auth";
 
@@ -15,7 +16,13 @@ export const meQueryOptions = queryOptions({
 const authMiddleware = createMiddleware({ type: "request" }).server(
 	async ({ next }) => {
 		const cookies = getCookies();
-		if (!cookies.access_token || !cookies.refresh_token) {
+		if (!cookies.access_token && !cookies.refresh_token) {
+			throw redirect({ to: "/login" });
+		}
+		try {
+			const user = await queryClient.fetchQuery(meQueryOptions);
+			if (!user) throw redirect({ to: "/login" });
+		} catch (error) {
 			throw redirect({ to: "/login" });
 		}
 		return next();
@@ -28,15 +35,8 @@ const fn = createServerFn({ method: "GET" })
 	});
 export const Route = createFileRoute("/_app")({
 	component: AppLayout,
-	beforeLoad: async ({ context }) => {
-		await fn();
-		let user = null;
-		try {
-			user = await context.queryClient.fetchQuery(meQueryOptions);
-			if (!user) throw redirect({ to: "/login" });
-		} catch (err: any) {
-			throw redirect({ to: "/login" });
-		}
+	server: {
+		middleware: [authMiddleware],
 	},
 });
 

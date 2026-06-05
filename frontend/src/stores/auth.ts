@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import type { User } from "~/types";
 
 export interface AuthState {
@@ -13,36 +13,44 @@ export interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>()(
-	persist(
-		(set, get) => ({
-			user: null,
-			accessToken: null,
-			isAuthenticated: false,
-			isHydrated: false,
-			setAuth: (user, accessToken) => {
-				set({ user, accessToken, isAuthenticated: true });
-			},
+	devtools(
+		persist(
+			(set, get) => ({
+				user: null,
+				accessToken: null,
+				isAuthenticated: false,
+				isHydrated: false,
+				setAuth: (user, accessToken) => {
+					set({ user, accessToken, isAuthenticated: true });
+				},
 
-			clearAuth: () => {
-				set({ user: null, accessToken: null, isAuthenticated: false });
-			},
+				clearAuth: () => {
+					set({ user: null, accessToken: null, isAuthenticated: false });
+				},
 
-			updateUser: (updates) => {
-				const current = get().user;
-				if (!current) return;
-				set({ user: { ...current, ...updates } });
-			},
-		}),
-		{
-			name: "devcollab-auth",
-			partialize: (state) => ({
-				user: state.user,
-				accessToken: state.accessToken,
-				isAuthenticated: state.isAuthenticated,
+				updateUser: (updates) => {
+					const current = get().user;
+					if (!current) return;
+					set({ user: { ...current, ...updates } });
+				},
 			}),
-			onRehydrateStorage(state) {
-				state.isHydrated = true;
+			{
+				name: "devcollab-auth",
+				storage: createJSONStorage(() => sessionStorage),
+				partialize: (state) => ({
+					user: state.user,
+					accessToken: state.accessToken,
+					isAuthenticated: state.isAuthenticated,
+				}),
+				onRehydrateStorage: () => (state, error) => {
+					if (!error && state) {
+						state.isHydrated = true;
+					}
+				},
 			},
+		),
+		{
+			name: "auth",
 		},
 	),
 );
