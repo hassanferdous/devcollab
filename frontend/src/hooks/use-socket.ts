@@ -60,10 +60,20 @@ export function useProjectSocket(projectId: number) {
 			);
 		});
 
+		socket.on("user:typing", (data) => {
+			console.log(data);
+		});
+		socket.on("user:typing-stop", (data) => {
+			console.log(data);
+		});
+
 		return () => {
+			socket.off("project:joined");
 			socket.off("task:created");
 			socket.off("task:updated");
 			socket.off("task:deleted");
+			socket.off("user:typing"); // ✅ Fixed
+			socket.off("user:typing-stop"); // ✅ Fixed
 		};
 	}, [accessToken, projectId, qc]);
 }

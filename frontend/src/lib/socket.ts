@@ -13,9 +13,14 @@ interface ServerToClientEvents {
 	"task:created": (data: TaskCreatedPayload) => void;
 	"task:updated": (data: TaskUpdatedPayload) => void;
 	"task:deleted": (data: TaskDeletedPayload) => void;
+	"user:typing": (data: any) => void;
+	"user:typing-stop": (data: any) => void;
 }
 
-interface ClientToServerEvents {}
+interface ClientToServerEvents {
+	"user:typing": (data: any) => void;
+	"user:typing-stop": (data: any) => void;
+}
 
 type ProjectSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 

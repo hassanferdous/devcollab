@@ -5,6 +5,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 import { createIsomorphicFn, createServerOnlyFn } from "@tanstack/react-start";
 import { parseSetCookie } from "set-cookie-parser";
+import { queryClient } from "~/components/providers/query-provider";
+import { redirect } from "@tanstack/react-router";
 
 const applyServerHeaders = createIsomorphicFn()
 	.server(async (config: InternalAxiosRequestConfig) => {
@@ -103,11 +105,13 @@ api.interceptors.response.use(
 			originalRequest.headers.Authorization = `Bearer ${tokens.access_token}`;
 			return api(originalRequest);
 		} catch (refreshError: any) {
-			console.log(refreshError?.response?.data?.error);
 			processQueue(refreshError as AxiosError, null);
+			queryClient.removeQueries();
 			useAuthStore.getState().clearAuth();
 			if (typeof window !== "undefined") {
 				window.location.href = "/login";
+			} else {
+				throw redirect({ to: "/login" });
 			}
 			return Promise.reject(refreshError);
 		} finally {

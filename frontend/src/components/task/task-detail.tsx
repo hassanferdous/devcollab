@@ -48,6 +48,7 @@ import { AddMemberDialog } from "../project/project-members";
 import { useParams } from "@tanstack/react-router";
 import { useProjectContext } from "../providers/project-slug-provider";
 import { Can } from "@casl/react";
+import { MessageForm } from "./message-form";
 
 function getInitials(name: string) {
 	return name
@@ -620,9 +621,7 @@ export function TaskDetail({
 						</div>
 
 						{/* Comment input placeholder */}
-						<div className="rounded-lg bg-muted border border-border px-3 py-2.5 text-sm text-muted-foreground cursor-text hover:border-ring transition-colors select-none">
-							Write a comment...
-						</div>
+						<MessageForm />
 					</div>
 				</div>
 			</DialogContent>

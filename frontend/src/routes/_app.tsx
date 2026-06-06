@@ -6,6 +6,7 @@ import { AppSidebar } from "~/components/layout/app-sidebar";
 import { queryClient } from "~/components/providers/query-provider";
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 import { meFn } from "~/server/auth";
+import { useAuthStore } from "~/stores/auth";
 
 export const meQueryOptions = queryOptions({
 	queryKey: ["auth", "me"],
@@ -20,9 +21,11 @@ const authMiddleware = createMiddleware({ type: "request" }).server(
 			throw redirect({ to: "/login" });
 		}
 		try {
-			const user = await queryClient.fetchQuery(meQueryOptions);
-			if (!user) throw redirect({ to: "/login" });
+			const response = await queryClient.fetchQuery(meQueryOptions);
+			if (!response.data) throw redirect({ to: "/login" });
 		} catch (error) {
+			queryClient.removeQueries({ queryKey: ["auth", "me"] });
+			useAuthStore.getState().clearAuth();
 			throw redirect({ to: "/login" });
 		}
 		return next();
