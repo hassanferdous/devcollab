@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { cn } from "~/lib/utils";
 import type { ProjectMember, Task, TaskPriority } from "~/types";
 import { Badge, badgeVariants } from "../ui/badge";
+import { useProjectContext } from "../providers/project-slug-provider";
+import { useAbility } from "@casl/react";
 
 const priorityConfig: Record<
 	string,
@@ -56,12 +58,11 @@ function getInitials(name: string) {
 
 interface TaskCardProps {
 	task: Task;
-	canEdit: boolean;
-	members: ProjectMember[];
 	onOpen: () => void;
 }
 
-export function TaskCard({ task, canEdit, members, onOpen }: TaskCardProps) {
+export function TaskCard({ task, onOpen }: TaskCardProps) {
+	const { members, effectiveRole } = useProjectContext();
 	const {
 		attributes,
 		listeners,
@@ -69,7 +70,7 @@ export function TaskCard({ task, canEdit, members, onOpen }: TaskCardProps) {
 		transform,
 		transition,
 		isDragging,
-	} = useSortable({ id: task.id, disabled: !canEdit });
+	} = useSortable({ id: task.id });
 
 	const style = {
 		transform: CSS.Transform.toString(transform),
@@ -77,8 +78,11 @@ export function TaskCard({ task, canEdit, members, onOpen }: TaskCardProps) {
 		zIndex: isDragging ? 999 : undefined,
 	};
 
+	const can = useAbility();
+	const canEdit = can.can("update", { role: effectiveRole, subject: "Task" });
+
 	const priority = priorityConfig[task.priority] ?? priorityConfig.low;
-	const assignee = members.find((m) => m.user_id === task.created_by);
+	const assignee = members?.find((m) => m.user_id === task.created_by);
 	const isOverdue =
 		task.due_date &&
 		isPast(new Date(task.due_date)) &&

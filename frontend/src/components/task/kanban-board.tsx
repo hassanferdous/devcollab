@@ -31,6 +31,7 @@ import type {
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { TaskDetail } from "./task-detail";
+import { useProjectContext } from "../providers/project-slug-provider";
 
 const COLUMNS: TaskStatus[] = ["pending", "in_progress", "completed"];
 
@@ -41,18 +42,11 @@ const collisionDetection: CollisionDetection = (args) => {
 };
 
 interface KanbanBoardProps {
-	projectId: number;
 	tasks: Task[];
-	members: ProjectMember[];
-	userRole?: MemberRole;
 }
 
-export function KanbanBoard({
-	projectId,
-	tasks: initialTasks,
-	members,
-	userRole,
-}: KanbanBoardProps) {
+export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
+	const { slug: projectId } = useProjectContext();
 	const [tasks, setTasks] = useState<Task[]>(initialTasks);
 	const [activeTask, setActiveTask] = useState<Task | null>(null);
 	const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
@@ -62,8 +56,6 @@ export function KanbanBoard({
 	}, [initialTasks]);
 
 	useProjectSocket(projectId);
-
-	const canEdit = userRole === "admin" || userRole === "member";
 
 	const { mutate: createTask, isPending: isCreating } =
 		useCreateTask(projectId);
@@ -214,8 +206,6 @@ export function KanbanBoard({
 							key={status}
 							status={status}
 							tasks={tasksByStatus[status]}
-							canEdit={canEdit}
-							members={members}
 							onCreateTask={handleCreateTask(status)}
 							onOpenTask={setSelectedTaskId}
 							isCreating={isCreating}
@@ -226,12 +216,7 @@ export function KanbanBoard({
 				<DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
 					{activeTask && (
 						<div className="rotate-2 scale-105 opacity-95 drop-shadow-xl">
-							<TaskCard
-								task={activeTask}
-								canEdit={false}
-								members={members}
-								onOpen={() => {}}
-							/>
+							<TaskCard task={activeTask} onOpen={() => {}} />
 						</div>
 					)}
 				</DragOverlay>
@@ -240,8 +225,6 @@ export function KanbanBoard({
 			{selectedTask && (
 				<TaskDetail
 					task={selectedTask}
-					members={members}
-					canEdit={canEdit}
 					open={!!selectedTask}
 					onOpenChange={(open) => {
 						if (!open) setSelectedTaskId(null);

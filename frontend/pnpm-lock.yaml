@@ -11,6 +11,12 @@ importers:
       '@base-ui/react':
         specifier: ^1.5.0
         version: 1.5.0(@date-fns/tz@1.5.0)(@types/react@19.2.15)(date-fns@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@casl/ability':
+        specifier: ^7.0.0
+        version: 7.0.0
+      '@casl/react':
+        specifier: ^7.0.0
+        version: 7.0.0(@casl/ability@7.0.0)(react@19.2.6)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -358,6 +364,15 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@casl/ability@7.0.0':
+    resolution: {integrity: sha512-QhwRflkTucpdS2uw1XScrzLWbgLYJGvPoq2Xm5OjeRci3dwtPixxnjUKJ04Ss1ivNS9tZQ8y4sjWeelWsrwo4g==}
+
+  '@casl/react@7.0.0':
+    resolution: {integrity: sha512-TfSujWNo4IosHoYZpkGdKXwlKdUBeJCm5CxaApjsOeyNFRfXcGWhHkikK4b6D0L+HgiRiizE7PxHhpc7lv3Z/g==}
+    peerDependencies:
+      '@casl/ability': ^4.0.0 || ^5.1.0 || ^6.0.0 || ^7.0.0
+      react: ^18.0.0 || ^19.0.0
 
   '@cloudflare/kv-asset-handler@0.4.2':
     resolution: {integrity: sha512-SIOD2DxrRRwQ+jgzlXCqoEFiKOFqaPjhnNTGKXSRLvp1HiOvapLaFG2kEr9dYQTYe8rKrd9uvDUzmAITeNyaHQ==}
@@ -2566,6 +2581,18 @@ packages:
 
   '@types/validate-npm-package-name@4.0.2':
     resolution: {integrity: sha512-lrpDziQipxCEeK5kWxvljWYhUvOiB2A9izZd9B2AFarYAkqZshb4lPbRs7zKEic6eGtH8V/2qJW+dPp9OtF6bw==}
+
+  '@ucast/core@2.0.0':
+    resolution: {integrity: sha512-4XVx6LzPXZGvnZO5jp39cm/G4UvuwvEdtmg+9+4+zl6uFkCcB7UJacvtMYeBE56GJVT99Zqy6Pii7dGJq3Kz9Q==}
+
+  '@ucast/js@4.0.1':
+    resolution: {integrity: sha512-9O5xPBvwEWQk2WvO69Eh2WJB8QljVZ2vRVdFvfnKjlZwWXcYxp1lqLBhwXBU1AtuSgCvKhJPkXdjKJggUmAmQQ==}
+
+  '@ucast/mongo2js@2.0.0':
+    resolution: {integrity: sha512-vNBZzRnsfLr/TSxEoxz6W6hHQ5tmWsfEeC0nCq5z8RezC1AqIRy3cfHm8AGvlGtcn+cTSFQcZremfqnz6wm+nQ==}
+
+  '@ucast/mongo@3.0.0':
+    resolution: {integrity: sha512-kwuSH+kdB4GCR0LGhy/PEDm4PCflur89AlK82kNiYD0FvsA8A/p+0sx7m+/R8mMFAlmlkAd3VXp7sM/cLLYWYg==}
 
   '@vercel/nft@1.10.2':
     resolution: {integrity: sha512-w+WyX5Ulmj4dtTZrxaulqrjaLZHSbnPzx75SJsTNYmotKsqn1JlLnDJa+lz5hn90HJofhl/2MAtw0mCrgM3qYw==}
@@ -5711,6 +5738,15 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.15
 
+  '@casl/ability@7.0.0':
+    dependencies:
+      '@ucast/mongo2js': 2.0.0
+
+  '@casl/react@7.0.0(@casl/ability@7.0.0)(react@19.2.6)':
+    dependencies:
+      '@casl/ability': 7.0.0
+      react: 19.2.6
+
   '@cloudflare/kv-asset-handler@0.4.2': {}
 
   '@date-fns/tz@1.5.0': {}
@@ -7667,6 +7703,22 @@ snapshots:
   '@types/use-sync-external-store@0.0.6': {}
 
   '@types/validate-npm-package-name@4.0.2': {}
+
+  '@ucast/core@2.0.0': {}
+
+  '@ucast/js@4.0.1':
+    dependencies:
+      '@ucast/core': 2.0.0
+
+  '@ucast/mongo2js@2.0.0':
+    dependencies:
+      '@ucast/core': 2.0.0
+      '@ucast/js': 4.0.1
+      '@ucast/mongo': 3.0.0
+
+  '@ucast/mongo@3.0.0':
+    dependencies:
+      '@ucast/core': 2.0.0
 
   '@vercel/nft@1.10.2(rollup@4.60.4)':
     dependencies:

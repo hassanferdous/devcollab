@@ -17,6 +17,8 @@ import { TaskCard } from "./task-card";
 import { TaskForm } from "./task-form";
 import type { ProjectMember, Task, TaskStatus } from "~/types";
 import { cn } from "~/lib/utils";
+import { Can, useAbility } from "@casl/react";
+import { useProjectContext } from "../providers/project-slug-provider";
 
 const columnConfig: Record<TaskStatus, { title: string; dot: string }> = {
 	pending: {
@@ -36,8 +38,6 @@ const columnConfig: Record<TaskStatus, { title: string; dot: string }> = {
 interface KanbanColumnProps {
 	status: TaskStatus;
 	tasks: Task[];
-	canEdit: boolean;
-	members: ProjectMember[];
 	onCreateTask: (data: { title: string; description: string }) => void;
 	onOpenTask: (taskId: number) => void;
 	isCreating: boolean;
@@ -46,12 +46,12 @@ interface KanbanColumnProps {
 export function KanbanColumn({
 	status,
 	tasks,
-	canEdit,
-	members,
 	onCreateTask,
 	onOpenTask,
 	isCreating,
 }: KanbanColumnProps) {
+	const { effectiveRole, members } = useProjectContext();
+
 	const [createOpen, setCreateOpen] = useState(false);
 	const config = columnConfig[status];
 
@@ -83,7 +83,7 @@ export function KanbanColumn({
 						{tasks.length}
 					</span>
 				</div>
-				{canEdit && (
+				<Can do="create" on={{ role: effectiveRole, subject: "Task" }}>
 					<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 						<DialogTrigger asChild>
 							<Button
@@ -104,7 +104,7 @@ export function KanbanColumn({
 							/>
 						</DialogContent>
 					</Dialog>
-				)}
+				</Can>
 			</div>
 
 			{/* Task list */}
@@ -119,15 +119,22 @@ export function KanbanColumn({
 							<TaskCard
 								key={task.id}
 								task={task}
-								canEdit={canEdit}
-								members={members}
 								onOpen={() => onOpenTask(task.id)}
 							/>
 						))}
 						{tasks.length === 0 && (
 							<div className="flex h-16 items-center justify-center rounded-lg border-2 border-dashed border-black/10 dark:border-white/10">
 								<p className="text-xs text-foreground/40">
-									{canEdit ? "Drop tasks here" : "No tasks"}
+									<Can
+										do="update"
+										on={{ role: effectiveRole, subject: "Task" }}>
+										Drop tasks here
+									</Can>
+									<Can
+										do="read"
+										on={{ role: effectiveRole, subject: "Task" }}>
+										No tasks
+									</Can>
 								</p>
 							</div>
 						)}
@@ -136,7 +143,7 @@ export function KanbanColumn({
 			</div>
 
 			{/* Add a card button */}
-			{canEdit && (
+			<Can do="create" on={{ role: effectiveRole, subject: "Task" }}>
 				<div className="px-2 py-2">
 					<Button
 						variant="ghost"
@@ -146,7 +153,7 @@ export function KanbanColumn({
 						Add a card
 					</Button>
 				</div>
-			)}
+			</Can>
 		</div>
 	);
 }

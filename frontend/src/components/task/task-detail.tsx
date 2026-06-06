@@ -44,6 +44,10 @@ import type {
 	TaskStatus,
 	UpdateTaskFormData,
 } from "~/types";
+import { AddMemberDialog } from "../project/project-members";
+import { useParams } from "@tanstack/react-router";
+import { useProjectContext } from "../providers/project-slug-provider";
+import { Can } from "@casl/react";
 
 function getInitials(name: string) {
 	return name
@@ -104,8 +108,6 @@ const priorityConfig: Record<
 
 interface TaskDetailProps {
 	task: Task;
-	members: ProjectMember[];
-	canEdit: boolean;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onUpdate: (taskId: number, data: UpdateTaskFormData) => void;
@@ -115,14 +117,15 @@ interface TaskDetailProps {
 
 export function TaskDetail({
 	task,
-	members,
-	canEdit,
 	open,
 	onOpenChange,
 	onUpdate,
 	onDelete,
 	isUpdating,
 }: TaskDetailProps) {
+	const { effectiveRole, members } = useProjectContext();
+
+	const { projectId } = useParams({ from: "/_app/projects/$projectId/" });
 	const [title, setTitle] = useState(task.title);
 	const [description, setDescription] = useState(task.description ?? "");
 	const [editingDescription, setEditingDescription] = useState(false);
@@ -159,7 +162,7 @@ export function TaskDetail({
 		setEditingDescription(false);
 	};
 
-	const creator = members.find((m) => m.user_id === task.created_by);
+	const creator = members?.find((m) => m.user_id === task.created_by);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -170,41 +173,54 @@ export function TaskDetail({
 
 				{/* Top bar */}
 				<div className="flex items-center justify-between px-3 py-2.5 shrink-0 border-b border-border">
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<button
-								disabled={!canEdit || isUpdating}
-								className={cn(
-									"flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-70",
-									statusConfig[task.status].badgeCls,
-								)}>
-								{statusConfig[task.status].label}
-								<ChevronDown className="size-3" />
-							</button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="start" className="min-w-[160px]">
-							{(Object.keys(statusConfig) as TaskStatus[]).map((s) => (
-								<DropdownMenuItem
-									key={s}
-									className={cn(
-										"cursor-pointer",
-										task.status === s && "bg-accent",
+					<Can
+						do="update"
+						on={{ role: effectiveRole, subject: "Task" }}
+						passThrough>
+						{({ isAllowed }) => (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<button
+										disabled={!isAllowed || isUpdating}
+										className={cn(
+											"flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-70",
+											statusConfig[task.status].badgeCls,
+										)}>
+										{statusConfig[task.status].label}
+										<ChevronDown className="size-3" />
+									</button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent
+									align="start"
+									className="min-w-[160px]">
+									{(Object.keys(statusConfig) as TaskStatus[]).map(
+										(s) => (
+											<DropdownMenuItem
+												key={s}
+												className={cn(
+													"cursor-pointer",
+													task.status === s && "bg-accent",
+												)}
+												onClick={() => {
+													if (task.status !== s)
+														onUpdate(task.id, { status: s });
+												}}>
+												{statusConfig[s].label}
+											</DropdownMenuItem>
+										),
 									)}
-									onClick={() => {
-										if (task.status !== s)
-											onUpdate(task.id, { status: s });
-									}}>
-									{statusConfig[s].label}
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
+					</Can>
 
 					<div className="flex items-center gap-0.5">
 						<button className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
 							<Image className="size-4" />
 						</button>
-						{canEdit && (
+						<Can
+							do="update"
+							on={{ role: effectiveRole, subject: "Task" }}>
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<button className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -223,7 +239,8 @@ export function TaskDetail({
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
-						)}
+						</Can>
+
 						<button
 							onClick={() => onOpenChange(false)}
 							className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -270,241 +287,204 @@ export function TaskDetail({
 							))}
 
 							{/* Start date pill */}
-							<Popover>
-								<PopoverTrigger asChild>
-									<button
-										disabled={!canEdit || isUpdating}
-										className={cn(
-											"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
-											dateRange?.from
-												? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
-												: "bg-accent text-accent-foreground border-border hover:bg-accent/80",
-										)}>
-										<CalendarPlus className="size-3.5 shrink-0" />
-										<span>
-											{dateRange?.from
-												? format(dateRange.from, "MMM d")
-												: "Start date"}
-										</span>
-										{dateRange?.from && (
-											<span
-												role="button"
-												aria-label="Clear due date"
-												tabIndex={0}
-												onClick={(e) => {
-													e.stopPropagation();
-													setDateRange((prev) => ({
-														...prev,
-														from: undefined,
-													}));
-												}}
-												className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100 transition-opacity">
-												<X className="size-2.5" />
-											</span>
-										)}
-									</button>
-								</PopoverTrigger>
-								<PopoverTrigger asChild>
-									<button
-										disabled={!canEdit || isUpdating}
-										className={cn(
-											"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
-											dateRange?.to
-												? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
-												: "bg-accent text-accent-foreground border-border hover:bg-accent/80",
-										)}>
-										<CalendarClock className="size-3.5 shrink-0" />
-										<span>
-											{dateRange?.to
-												? format(dateRange.to, "MMM d")
-												: "Due date"}
-										</span>
-										{dateRange?.to && (
-											<span
-												role="button"
-												aria-label="Clear due date"
-												tabIndex={0}
-												onClick={(e) => {
-													e.stopPropagation();
-													setDateRange((prev) => ({
-														from: prev?.from,
-														to: undefined,
-													}));
-												}}
-												className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100 transition-opacity">
-												<X className="size-2.5" />
-											</span>
-										)}
-									</button>
-								</PopoverTrigger>
-								<PopoverContent
-									align="end"
-									className="w-auto p-0 overflow-hidden">
-									<Calendar
-										selected={dateRange}
-										captionLayout="label"
-										classNames={{
-											root: "w-full",
-										}}
-										mode="range"
-										onSelect={setDateRange}
-									/>
-									<div className="flex items-center justify-end gap-2 px-3 py-1.5 border-t border-border bg-muted/30">
-										<button
-											type="button"
-											onClick={() =>
-												setDateRange({
-													from: undefined,
-													to: undefined,
-												})
-											}
-											className="text-xs text-muted-foreground hover:text-destructive transition-colors font-medium px-2 py-1 rounded-md hover:bg-destructive/10">
-											Clear
-										</button>
-										<PopoverClose asChild>
-											<Button
-												className="py-1 h-auto text-xs"
-												disabled={!dateRange?.from}
-												type="button">
-												Save
-											</Button>
-										</PopoverClose>
-									</div>
-								</PopoverContent>
-							</Popover>
-
-							{/* Due date pill (shows to-date from the same range) */}
-							{/* <Popover>
-								<PopoverTrigger asChild>
-									<button
-										disabled={!canEdit || isUpdating}
-										className={cn(
-											"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
-											dateRange?.to
-												? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
-												: "bg-accent text-accent-foreground border-border hover:bg-accent/80",
-										)}>
-										<CalendarClock className="size-3.5 shrink-0" />
-										<span>
-											{dateRange?.to
-												? format(dateRange.to, "MMM d")
-												: "Due date"}
-										</span>
-										{dateRange?.to && (
-											<span
-												role="button"
-												aria-label="Clear due date"
-												tabIndex={0}
-												onClick={(e) => {
-													e.stopPropagation();
-													setDateRange((prev) => ({
-														from: prev?.from,
-														to: undefined,
-													}));
-												}}
-												className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100 transition-opacity">
-												<X className="size-2.5" />
-											</span>
-										)}
-									</button>
-								</PopoverTrigger>
-								<PopoverContent
-									align="start"
-									className="w-auto p-0 overflow-hidden">
-									<Calendar
-										selected={dateRange}
-										onSelect={setDateRange}
-										mode="range"
-										captionLayout="label"
-										classNames={{
-											root: "w-full",
-										}}
-									/>
-									<div className="flex items-center justify-end gap-2 px-3 py-1.5 border-t border-border bg-muted/30">
-										<button
-											type="button"
-											onClick={() =>
-												setDateRange({
-													from: undefined,
-													to: undefined,
-												})
-											}
-											className="text-xs text-muted-foreground hover:text-destructive transition-colors font-medium px-2 py-1 rounded-md hover:bg-destructive/10">
-											Clear
-										</button>
-										<PopoverClose asChild>
-											<Button
-												className="py-1 h-auto text-xs"
-												disabled={!dateRange?.to}
-												type="button">
-												Save
-											</Button>
-										</PopoverClose>
-									</div>
-								</PopoverContent>
-							</Popover> */}
-
-							{/* Priority pill – DropdownMenu */}
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<button
-										disabled={!canEdit || isUpdating}
-										className={cn(
-											"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
-											priorityConfig[task.priority].pill,
-										)}>
-										<Flag
-											className={cn(
-												"size-3 shrink-0",
-												priorityConfig[task.priority].flag,
-											)}
-										/>
-										{priorityConfig[task.priority].label}
-										<ChevronDown className="size-3 opacity-60" />
-									</button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent
-									align="start"
-									className="min-w-[160px]">
-									<div className="px-2 py-1.5 mb-1">
-										<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-											Set priority
-										</p>
-									</div>
-									{(Object.keys(priorityConfig) as TaskPriority[]).map(
-										(p) => (
-											<DropdownMenuItem
-												key={p}
+							<Can
+								do="update"
+								on={{ role: effectiveRole, subject: "Task" }}
+								passThrough>
+								{({ isAllowed }) => (
+									<Popover>
+										<PopoverTrigger asChild>
+											<button
+												disabled={!isAllowed || isUpdating}
 												className={cn(
-													"cursor-pointer gap-2 rounded-md",
-													task.priority === p &&
-														"bg-accent font-semibold",
-												)}
-												onClick={() => {
-													if (canEdit && task.priority !== p)
-														onUpdate(task.id, { priority: p });
-												}}>
-												<Flag
-													className={cn(
-														"size-3.5 shrink-0",
-														priorityConfig[p].flag,
-													)}
-												/>
-												<span>{priorityConfig[p].label}</span>
-												{task.priority === p && (
-													<span className="ml-auto text-[10px] font-medium bg-muted rounded px-1 py-0.5">
-														active
+													"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
+													dateRange?.from
+														? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+														: "bg-accent text-accent-foreground border-border hover:bg-accent/80",
+												)}>
+												<CalendarPlus className="size-3.5 shrink-0" />
+												<span>
+													{dateRange?.from
+														? format(dateRange.from, "MMM d")
+														: "Start date"}
+												</span>
+												{dateRange?.from && (
+													<span
+														role="button"
+														aria-label="Clear due date"
+														tabIndex={0}
+														onClick={(e) => {
+															e.stopPropagation();
+															setDateRange((prev) => ({
+																...prev,
+																from: undefined,
+															}));
+														}}
+														className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100 transition-opacity">
+														<X className="size-2.5" />
 													</span>
 												)}
-											</DropdownMenuItem>
-										),
-									)}
-								</DropdownMenuContent>
-							</DropdownMenu>
+											</button>
+										</PopoverTrigger>
+										<PopoverTrigger asChild>
+											<button
+												disabled={!isAllowed || isUpdating}
+												className={cn(
+													"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
+													dateRange?.to
+														? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
+														: "bg-accent text-accent-foreground border-border hover:bg-accent/80",
+												)}>
+												<CalendarClock className="size-3.5 shrink-0" />
+												<span>
+													{dateRange?.to
+														? format(dateRange.to, "MMM d")
+														: "Due date"}
+												</span>
+												{dateRange?.to && (
+													<span
+														role="button"
+														aria-label="Clear due date"
+														tabIndex={0}
+														onClick={(e) => {
+															e.stopPropagation();
+															setDateRange((prev) => ({
+																from: prev?.from,
+																to: undefined,
+															}));
+														}}
+														className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100 transition-opacity">
+														<X className="size-2.5" />
+													</span>
+												)}
+											</button>
+										</PopoverTrigger>
+										<PopoverContent
+											align="end"
+											className="w-auto p-0 overflow-hidden">
+											<Calendar
+												selected={dateRange}
+												captionLayout="label"
+												classNames={{
+													root: "w-full",
+												}}
+												mode="range"
+												onSelect={setDateRange}
+											/>
+											<div className="flex items-center justify-end gap-2 px-3 py-1.5 border-t border-border bg-muted/30">
+												<button
+													type="button"
+													onClick={() =>
+														setDateRange({
+															from: undefined,
+															to: undefined,
+														})
+													}
+													className="text-xs text-muted-foreground hover:text-destructive transition-colors font-medium px-2 py-1 rounded-md hover:bg-destructive/10">
+													Clear
+												</button>
+												<PopoverClose asChild>
+													<Button
+														className="py-1 h-auto text-xs"
+														disabled={!dateRange?.from}
+														type="button">
+														Save
+													</Button>
+												</PopoverClose>
+											</div>
+										</PopoverContent>
+									</Popover>
+								)}
+							</Can>
+
+							{/* Priority pill – DropdownMenu */}
+							<Can
+								do="update"
+								on={{ role: effectiveRole, subject: "Task" }}
+								passThrough>
+								{({ isAllowed }) => (
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<button
+												disabled={!isAllowed || isUpdating}
+												className={cn(
+													"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
+													priorityConfig[task.priority].pill,
+												)}>
+												<Flag
+													className={cn(
+														"size-3 shrink-0",
+														priorityConfig[task.priority].flag,
+													)}
+												/>
+												{priorityConfig[task.priority].label}
+												<ChevronDown className="size-3 opacity-60" />
+											</button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent
+											align="start"
+											className="min-w-[160px]">
+											<div className="px-2 py-1.5 mb-1">
+												<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+													Set priority
+												</p>
+											</div>
+
+											{(
+												Object.keys(
+													priorityConfig,
+												) as TaskPriority[]
+											).map((p) => (
+												<Can
+													do="update"
+													on={{
+														role: effectiveRole,
+														subject: "Task",
+													}}
+													passThrough>
+													{({ isAllowed }) => (
+														<DropdownMenuItem
+															key={p}
+															className={cn(
+																"cursor-pointer gap-2 rounded-md",
+																task.priority === p &&
+																	"bg-accent font-semibold",
+															)}
+															onClick={() => {
+																if (
+																	isAllowed &&
+																	task.priority !== p
+																)
+																	onUpdate(task.id, {
+																		priority: p,
+																	});
+															}}>
+															<Flag
+																className={cn(
+																	"size-3.5 shrink-0",
+																	priorityConfig[p].flag,
+																)}
+															/>
+															<span>
+																{priorityConfig[p].label}
+															</span>
+															{task.priority === p && (
+																<span className="ml-auto text-[10px] font-medium bg-muted rounded px-1 py-0.5">
+																	active
+																</span>
+															)}
+														</DropdownMenuItem>
+													)}
+												</Can>
+											))}
+										</DropdownMenuContent>
+									</DropdownMenu>
+								)}
+							</Can>
 						</div>
 
 						{/* Members */}
-						{members.length > 0 && (
+						{members && members.length > 0 && (
 							<div>
 								<div className="flex items-center gap-2 mb-2">
 									<Users className="size-4 text-muted-foreground shrink-0" />
@@ -513,7 +493,7 @@ export function TaskDetail({
 									</span>
 								</div>
 								<div className="flex flex-wrap items-center ml-6">
-									{members.map((m) => (
+									{members?.map((m) => (
 										<div
 											className="not-first:-ml-2"
 											key={m.user_id}
@@ -526,15 +506,19 @@ export function TaskDetail({
 											</Avatar>
 										</div>
 									))}
-									{canEdit && (
-										<Button
-											className="size-8 rounded-full ml-1"
-											variant="accent"
-											size="icon"
-											aria-haspopup>
-											<Plus className="size-3.5" />
-										</Button>
-									)}
+									<Can
+										do="update"
+										on={{ role: effectiveRole, subject: "Task" }}>
+										<AddMemberDialog projectId={+projectId}>
+											<Button
+												className="size-8 rounded-full ml-1"
+												variant="accent"
+												size="icon"
+												aria-haspopup>
+												<Plus className="size-3.5" />
+											</Button>
+										</AddMemberDialog>
+									</Can>
 								</div>
 							</div>
 						)}
@@ -548,13 +532,15 @@ export function TaskDetail({
 										Description
 									</span>
 								</div>
-								{canEdit && !editingDescription && (
+								<Can
+									do="update"
+									on={{ role: effectiveRole, subject: "Task" }}>
 									<button
 										onClick={() => setEditingDescription(true)}
 										className="rounded-md px-3 py-1 text-xs text-muted-foreground bg-muted hover:bg-accent hover:text-accent-foreground transition-colors">
 										Edit
 									</button>
-								)}
+								</Can>
 							</div>
 							<div className="ml-6">
 								{editingDescription ? (
@@ -567,7 +553,7 @@ export function TaskDetail({
 											autoFocus
 											placeholder="Add a more detailed description..."
 											rows={4}
-											className="resize-none text-sm min-h-auto"
+											className="resize-none text-sm min-h-16"
 										/>
 										<div className="flex gap-2">
 											<Button
@@ -586,20 +572,28 @@ export function TaskDetail({
 										</div>
 									</div>
 								) : (
-									<div
-										onClick={() =>
-											canEdit && setEditingDescription(true)
-										}
-										className={cn(
-											"text-sm whitespace-pre-wrap min-h-[60px] rounded-md px-3 py-2.5 transition-colors break-words",
-											description
-												? "text-foreground"
-												: "text-muted-foreground italic",
-											canEdit && "cursor-pointer hover:bg-muted",
-										)}>
-										{description ||
-											"Add a more detailed description..."}
-									</div>
+									<Can
+										do="update"
+										on={{ role: effectiveRole, subject: "Task" }}
+										passThrough>
+										{({ isAllowed }) => (
+											<div
+												onClick={() =>
+													isAllowed && setEditingDescription(true)
+												}
+												className={cn(
+													"text-sm whitespace-pre-wrap min-h-16 rounded-md px-3 py-2.5 transition-colors break-words",
+													description
+														? "text-foreground"
+														: "text-muted-foreground italic",
+													isAllowed &&
+														"cursor-pointer hover:bg-muted",
+												)}>
+												{description ||
+													"Add a more detailed description..."}
+											</div>
+										)}
+									</Can>
 								)}
 							</div>
 						</div>

@@ -3,9 +3,8 @@ import { useAuthStore } from "~/stores/auth";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-import { createIsomorphicFn } from "@tanstack/react-start";
+import { createIsomorphicFn, createServerOnlyFn } from "@tanstack/react-start";
 import { parseSetCookie } from "set-cookie-parser";
-import { setCookie } from "@tanstack/react-start/server";
 
 const applyServerHeaders = createIsomorphicFn()
 	.server(async (config: InternalAxiosRequestConfig) => {
@@ -20,6 +19,17 @@ const applyServerHeaders = createIsomorphicFn()
 	.client((config: InternalAxiosRequestConfig) => {
 		return config;
 	});
+
+const forwardCookieToClient = createServerOnlyFn(
+	async (setCookieHeader: string[]) => {
+		const { setCookie } = await import("@tanstack/react-start/server");
+		const cookies = parseSetCookie(setCookieHeader);
+		cookies.forEach((cookie) => {
+			const { name, value, ...rest } = cookie;
+			setCookie(name, value, rest as any);
+		});
+	},
+);
 
 export const api = axios.create({
 	baseURL: API_BASE_URL,
@@ -84,11 +94,7 @@ api.interceptors.response.use(
 			// If backend sends a new set-cookie, forward it back to the browser
 			if (typeof window === "undefined") {
 				const setCookieHeader = response.headers["set-cookie"];
-				const cookies = parseSetCookie(setCookieHeader!);
-				cookies.forEach((cookie) => {
-					const { name, value, ...rest } = cookie;
-					setCookie(name, value, rest as any);
-				});
+				forwardCookieToClient(setCookieHeader!);
 			}
 
 			useAuthStore.getState().setAuth(user, tokens.access_token);

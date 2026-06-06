@@ -20,6 +20,12 @@ import {
 	useProjectSuspense,
 } from "~/queries/use-projects";
 import { tasksQueryOptions, useTasks } from "~/queries/use-tasks";
+import { ProjectAbilityProvider } from "~/components/project/project-ability";
+import {
+	ProjectSlugProvider,
+	useProjectContext,
+} from "~/components/providers/project-slug-provider";
+import { number } from "yup";
 
 export const Route = createFileRoute("/_app/projects/$projectId/")({
 	loader: async ({ context: { queryClient }, params }) => {
@@ -119,25 +125,11 @@ function TaskCounts({ projectId }: { projectId: number }) {
 	);
 }
 
-function KanbanSection({
-	projectId,
-	members,
-	userRole,
-}: {
-	projectId: number;
-	members: ProjectMember[];
-	userRole: MemberRole | undefined;
-}) {
-	const { data: tasksData } = useTasks(projectId);
+function KanbanSection() {
+	const { slug } = useProjectContext();
+	const { data: tasksData } = useTasks(Number(slug));
 	const tasks = tasksData?.data ?? [];
-	return (
-		<KanbanBoard
-			projectId={projectId}
-			tasks={tasks}
-			members={members}
-			userRole={userRole}
-		/>
-	);
+	return <KanbanBoard tasks={tasks} />;
 }
 
 function ProjectDetailPage() {
@@ -156,77 +148,79 @@ function ProjectDetailPage() {
 	const canManage = effectiveRole === "admin";
 
 	return (
-		<>
-			<AppHeader
-				actions={
-					<Sheet open={membersOpen} onOpenChange={setMembersOpen}>
-						<SheetTrigger asChild>
-							<Button variant="outline" size="sm">
-								<Users className="size-4" />
-								Members ({members.length})
-							</Button>
-						</SheetTrigger>
-						<SheetContent className="w-[400px] sm:w-[480px]">
-							<SheetHeader>
-								<SheetTitle>Project members</SheetTitle>
-							</SheetHeader>
-							<div className="flex-1 overflow-y-auto px-4 pb-4">
-								<ProjectMembers
-									projectId={id}
-									members={members}
-									canManage={canManage}
-								/>
-							</div>
-						</SheetContent>
-					</Sheet>
-				}
-			/>
+		<ProjectSlugProvider
+			slug={id}
+			project={project}
+			effectiveRole={effectiveRole}
+			members={members}>
+			<ProjectAbilityProvider>
+				<AppHeader
+					actions={
+						<Sheet open={membersOpen} onOpenChange={setMembersOpen}>
+							<SheetTrigger asChild>
+								<Button variant="outline" size="sm">
+									<Users className="size-4" />
+									Members ({members.length})
+								</Button>
+							</SheetTrigger>
+							<SheetContent className="w-[400px] sm:w-[480px]">
+								<SheetHeader>
+									<SheetTitle>Project members</SheetTitle>
+								</SheetHeader>
+								<div className="flex-1 overflow-y-auto px-4 pb-4">
+									<ProjectMembers
+										projectId={id}
+										members={members}
+										canManage={canManage}
+									/>
+								</div>
+							</SheetContent>
+						</Sheet>
+					}
+				/>
 
-			<div className="flex flex-1 flex-col overflow-hidden">
-				<div className="border-b border-border px-6 py-4">
-					<div className="flex items-start gap-3">
-						<div className="min-w-0 flex-1">
-							<div className="flex items-center gap-2 flex-wrap">
-								<h1 className="text-xl font-bold truncate">
-									{project.name}
-								</h1>
-								<span
-									className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
-										project.status === "active"
-											? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-											: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-									}`}>
-									{project.status}
-								</span>
-								{effectiveRole && (
-									<span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium capitalize text-primary">
-										{effectiveRole}
+				<div className="flex flex-1 flex-col overflow-hidden">
+					<div className="border-b border-border px-6 py-4">
+						<div className="flex items-start gap-3">
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-2 flex-wrap">
+									<h1 className="text-xl font-bold truncate">
+										{project.name}
+									</h1>
+									<span
+										className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+											project.status === "active"
+												? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+												: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+										}`}>
+										{project.status}
 									</span>
+									{effectiveRole && (
+										<span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium capitalize text-primary">
+											{effectiveRole}
+										</span>
+									)}
+								</div>
+								{project.description && (
+									<p className="mt-1 text-sm text-muted-foreground">
+										{project.description}
+									</p>
 								)}
 							</div>
-							{project.description && (
-								<p className="mt-1 text-sm text-muted-foreground">
-									{project.description}
-								</p>
-							)}
 						</div>
+
+						<Suspense fallback={<TaskCountsSkeleton />}>
+							<TaskCounts projectId={id} />
+						</Suspense>
 					</div>
 
-					<Suspense fallback={<TaskCountsSkeleton />}>
-						<TaskCounts projectId={id} />
-					</Suspense>
+					<div className="flex-1 overflow-auto p-6">
+						<Suspense fallback={<KanbanSkeleton />}>
+							<KanbanSection />
+						</Suspense>
+					</div>
 				</div>
-
-				<div className="flex-1 overflow-auto p-6">
-					<Suspense fallback={<KanbanSkeleton />}>
-						<KanbanSection
-							projectId={id}
-							members={members}
-							userRole={effectiveRole}
-						/>
-					</Suspense>
-				</div>
-			</div>
-		</>
+			</ProjectAbilityProvider>
+		</ProjectSlugProvider>
 	);
 }
