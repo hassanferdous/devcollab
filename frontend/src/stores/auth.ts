@@ -50,7 +50,7 @@ export const useAuthStore = create<AuthState>()(
 			},
 		),
 		{
-			name: "auth",
+			name: "devcollab-auth",
 		},
 	),
 );

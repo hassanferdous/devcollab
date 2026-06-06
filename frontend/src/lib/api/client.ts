@@ -4,6 +4,8 @@ import { useAuthStore } from "~/stores/auth";
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 import { createIsomorphicFn } from "@tanstack/react-start";
+import { parseSetCookie } from "set-cookie-parser";
+import { setCookie } from "@tanstack/react-start/server";
 
 const applyServerHeaders = createIsomorphicFn()
 	.server(async (config: InternalAxiosRequestConfig) => {
@@ -63,18 +65,39 @@ api.interceptors.response.use(
 		originalRequest._retry = true;
 		isRefreshing = true;
 		try {
-			console.log("****** Token rotation triggered ******");
-			const response = await axios.post(
-				`${API_BASE_URL}/auth/refresh-token`,
-				{},
-				{ withCredentials: true },
-			);
+			// 1. Prepare the refresh request configuration
+			let refreshConfig = {
+				method: "post",
+				url: `${API_BASE_URL}/auth/refresh-token`,
+				data: {},
+				withCredentials: true,
+				headers: { "Content-Type": "application/json" },
+			} as InternalAxiosRequestConfig;
+
+			// 2. Inject browser cookies if running on the server
+			refreshConfig = await applyServerHeaders(refreshConfig);
+
+			// 3. Execute the refresh request
+			const response = await axios(refreshConfig);
 			const { tokens, user } = response.data.data;
+
+			// If backend sends a new set-cookie, forward it back to the browser
+			if (typeof window === "undefined") {
+				const setCookieHeader = response.headers["set-cookie"];
+				const cookies = parseSetCookie(setCookieHeader!);
+				cookies.forEach((cookie) => {
+					const { name, value, ...rest } = cookie;
+					setCookie(name, value, rest as any);
+				});
+			}
+
 			useAuthStore.getState().setAuth(user, tokens.access_token);
 			processQueue(null, tokens.access_token);
+
 			originalRequest.headers.Authorization = `Bearer ${tokens.access_token}`;
 			return api(originalRequest);
-		} catch (refreshError) {
+		} catch (refreshError: any) {
+			console.log(refreshError?.response?.data?.error);
 			processQueue(refreshError as AxiosError, null);
 			useAuthStore.getState().clearAuth();
 			if (typeof window !== "undefined") {

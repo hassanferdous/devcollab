@@ -10,7 +10,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ title, actions }: AppHeaderProps) {
 	return (
-		<header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background px-4">
+		<header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background px-4 sticky top-0">
 			<SidebarTrigger />
 			<Separator orientation="vertical" />
 			{title && <h1 className="text-sm font-semibold">{title}</h1>}
