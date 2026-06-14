@@ -50,7 +50,7 @@ export function KanbanColumn({
 	onOpenTask,
 	isCreating,
 }: KanbanColumnProps) {
-	const { effectiveRole, members } = useProjectContext();
+	const { members } = useProjectContext();
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const config = columnConfig[status];
@@ -83,7 +83,7 @@ export function KanbanColumn({
 						{tasks.length}
 					</span>
 				</div>
-				<Can do="create" on={{ role: effectiveRole, subject: "Task" }}>
+				<Can do="create" on="Task">
 					<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 						<DialogTrigger asChild>
 							<Button
@@ -127,12 +127,12 @@ export function KanbanColumn({
 								<p className="text-xs text-foreground/40">
 									<Can
 										do="update"
-										on={{ role: effectiveRole, subject: "Task" }}>
+										on="Task">
 										Drop tasks here
 									</Can>
 									<Can
 										do="read"
-										on={{ role: effectiveRole, subject: "Task" }}>
+										on="Task">
 										No tasks
 									</Can>
 								</p>
@@ -143,7 +143,7 @@ export function KanbanColumn({
 			</div>
 
 			{/* Add a card button */}
-			<Can do="create" on={{ role: effectiveRole, subject: "Task" }}>
+			<Can do="create" on="Task">
 				<div className="px-2 py-2">
 					<Button
 						variant="ghost"

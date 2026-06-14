@@ -16,7 +16,7 @@ import { useDebounce } from "~/hooks/use-debounce";
 import { useAuthStore } from "~/stores/auth";
 
 export function MessageForm() {
-	const { slug: projectId, effectiveRole } = useProjectContext();
+	const { slug: projectId } = useProjectContext();
 	const { user } = useAuthStore();
 	const [isFocused, setIsFocused] = useState<boolean>(false);
 	const form = useForm({

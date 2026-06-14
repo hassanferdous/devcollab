@@ -15,6 +15,14 @@ export interface Task {
   updated_at: string
 }
 
+export interface TaskAssignee {
+  user_id: number
+  name: string | null
+  email: string
+  avatar: string | null
+  assigned_at: string | null
+}
+
 export interface TaskActivityLog {
   id: number
   task_id: number

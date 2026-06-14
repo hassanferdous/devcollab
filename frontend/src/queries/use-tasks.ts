@@ -7,13 +7,15 @@ import {
 } from "@tanstack/react-query";
 import { taskApi } from "~/lib/api/tasks";
 import { wait } from "~/lib/utils";
-import type { UpdateTaskFormData } from "~/types";
+import type { TaskAssignee, UpdateTaskFormData } from "~/types";
 
 export const taskKeys = {
 	all: ["tasks"] as const,
 	lists: (projectId: number) => [...taskKeys.all, "list", projectId] as const,
 	detail: (projectId: number, taskId: number) =>
 		[...taskKeys.all, "detail", projectId, taskId] as const,
+	assignees: (projectId: number, taskId: number) =>
+		[...taskKeys.all, "assignees", projectId, taskId] as const,
 };
 
 export const tasksQueryOptions = (projectId: number) =>
@@ -74,5 +76,32 @@ export function useDeleteTask(projectId: number) {
 		mutationFn: (taskId: number) => taskApi.delete(projectId, taskId),
 		onSuccess: () =>
 			qc.invalidateQueries({ queryKey: taskKeys.lists(projectId) }),
+	});
+}
+
+export function useTaskAssignees(projectId: number, taskId: number, enabled = true) {
+	return useQuery({
+		queryKey: taskKeys.assignees(projectId, taskId),
+		queryFn: () =>
+			taskApi.getAssignees(projectId, taskId).then((r) => r.data.data as TaskAssignee[]),
+		enabled: enabled && !!projectId && !!taskId,
+	});
+}
+
+export function useAddAssignees(projectId: number, taskId: number) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (userIds: number[]) => taskApi.addAssignees(projectId, taskId, userIds),
+		onSuccess: () =>
+			qc.invalidateQueries({ queryKey: taskKeys.assignees(projectId, taskId) }),
+	});
+}
+
+export function useRemoveAssignee(projectId: number, taskId: number) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (userId: number) => taskApi.removeAssignee(projectId, taskId, userId),
+		onSuccess: () =>
+			qc.invalidateQueries({ queryKey: taskKeys.assignees(projectId, taskId) }),
 	});
 }

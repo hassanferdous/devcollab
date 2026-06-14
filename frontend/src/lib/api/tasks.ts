@@ -25,4 +25,13 @@ export const taskApi = {
 
 	delete: (projectId: number, taskId: number) =>
 		api.delete(`/projects/${projectId}/tasks/${taskId}`),
+
+	getAssignees: (projectId: number, taskId: number) =>
+		api.get(`/projects/${projectId}/tasks/${taskId}/assignees`),
+
+	addAssignees: (projectId: number, taskId: number, userIds: number[]) =>
+		api.post(`/projects/${projectId}/tasks/${taskId}/assignees`, { user_ids: userIds }),
+
+	removeAssignee: (projectId: number, taskId: number, userId: number) =>
+		api.delete(`/projects/${projectId}/tasks/${taskId}/assignees/${userId}`),
 };

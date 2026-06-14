@@ -20,7 +20,7 @@ import {
 	useDeleteTask,
 	useUpdateTask,
 } from "~/queries/use-tasks";
-import { useProjectSocket } from "~/hooks/use-socket";
+import { useProjectSocket } from "~/hooks/use-project-socket";
 import type {
 	MemberRole,
 	ProjectMember,

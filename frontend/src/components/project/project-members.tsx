@@ -1,6 +1,6 @@
 import { yupResolver } from "@hookform/resolvers/yup";
-import { Loader2, UserMinus, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { Loader2, MailQuestion, UserMinus, UserPlus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as yup from "yup";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -49,7 +49,7 @@ import type {
 } from "~/types";
 
 const addMemberSchema = yup.object({
-	userId: yup.number().required("User ID is required"),
+	userId: yup.number().required("User is required"),
 	role: yup
 		.mixed<MemberRole>()
 		.oneOf(["admin", "member", "viewer"])
@@ -91,9 +91,12 @@ export function AddMemberDialog({
 	children?: React.ReactNode;
 }) {
 	const [addOpen, setAddOpen] = useState(false);
-	const [userSearch, setUserSearch] = useState("");
-	const [foundUser, setFoundUser] = useState<User | null>(null);
+	const [emailInput, setEmailInput] = useState("");
+	const [results, setResults] = useState<User[]>([]);
+	const [selectedUser, setSelectedUser] = useState<User | null>(null);
+	const [notFound, setNotFound] = useState(false);
 	const [searching, setSearching] = useState(false);
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const { mutate, isPending } = useManageMember(projectId);
 
 	const form = useForm<AddMemberFormData>({
@@ -101,19 +104,55 @@ export function AddMemberDialog({
 		defaultValues: { userId: 0, role: "member" },
 	});
 
-	const searchUser = async () => {
+	const searchUsers = async (query: string) => {
+		if (!query.trim()) {
+			setResults([]);
+			setNotFound(false);
+			return;
+		}
 		setSearching(true);
 		try {
-			const userId = parseInt(userSearch);
-			if (isNaN(userId)) return;
-			const res = await userApi.getById(userId);
-			setFoundUser(res.data.data);
-			form.setValue("userId", userId);
+			const res = await userApi.getAll({ search: query.trim(), page: 1, limit: 5 });
+			const users: User[] = res.data.data?.data ?? [];
+			setResults(users);
+			setNotFound(users.length === 0);
 		} catch {
-			setFoundUser(null);
+			setResults([]);
+			setNotFound(true);
 		} finally {
 			setSearching(false);
 		}
+	};
+
+	const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const val = e.target.value;
+		setEmailInput(val);
+		setSelectedUser(null);
+		setNotFound(false);
+
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		debounceRef.current = setTimeout(() => searchUsers(val), 350);
+	};
+
+	useEffect(() => {
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current);
+		};
+	}, []);
+
+	const selectUser = (u: User) => {
+		setSelectedUser(u);
+		setEmailInput(u.email);
+		setResults([]);
+		form.setValue("userId", u.id);
+	};
+
+	const resetDialog = () => {
+		setEmailInput("");
+		setResults([]);
+		setSelectedUser(null);
+		setNotFound(false);
+		form.reset();
 	};
 
 	const handleAddMember = (data: AddMemberFormData) => {
@@ -122,16 +161,14 @@ export function AddMemberDialog({
 			{
 				onSuccess: () => {
 					setAddOpen(false);
-					form.reset();
-					setFoundUser(null);
-					setUserSearch("");
+					resetDialog();
 				},
 			},
 		);
 	};
 
 	return (
-		<Dialog open={addOpen} onOpenChange={setAddOpen}>
+		<Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetDialog(); }}>
 			<DialogTrigger asChild>{children}</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
@@ -141,45 +178,83 @@ export function AddMemberDialog({
 					<form
 						onSubmit={form.handleSubmit(handleAddMember)}
 						className="space-y-4">
-						<div className="flex gap-2">
-							<Input
-								placeholder="User ID"
-								value={userSearch}
-								onChange={(e) => setUserSearch(e.target.value)}
-								type="number"
-							/>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={searchUser}
-								disabled={searching}>
-								{searching ? (
-									<Loader2 className="size-4 animate-spin" />
-								) : (
-									"Find"
+						{/* Email search */}
+						<div className="relative">
+							<div className="relative">
+								<Input
+									placeholder="Search by name or email..."
+									value={emailInput}
+									onChange={handleEmailChange}
+									autoComplete="off"
+								/>
+								{searching && (
+									<Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground" />
 								)}
-							</Button>
+							</div>
+
+							{/* Dropdown results */}
+							{results.length > 0 && !selectedUser && (
+								<div className="absolute z-10 mt-1 w-full rounded-lg border bg-popover shadow-md overflow-hidden">
+									{results.map((u) => (
+										<button
+											key={u.id}
+											type="button"
+											onClick={() => selectUser(u)}
+											className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-accent transition-colors">
+											<Avatar className="size-7 shrink-0">
+												<AvatarImage src={u.avatar ?? undefined} />
+												<AvatarFallback className="text-[10px]">
+													{getInitials(u.name)}
+												</AvatarFallback>
+											</Avatar>
+											<div className="min-w-0">
+												<p className="text-sm font-medium truncate">{u.name}</p>
+												<p className="text-xs text-muted-foreground truncate">{u.email}</p>
+											</div>
+										</button>
+									))}
+								</div>
+							)}
 						</div>
 
-						{foundUser && (
-							<div className="flex items-center gap-3 rounded-lg border p-3">
-								<Avatar className="size-8">
-									<AvatarImage src={foundUser.avatar ?? undefined} />
+						{/* Selected user card */}
+						{selectedUser && (
+							<div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+								<Avatar className="size-8 shrink-0">
+									<AvatarImage src={selectedUser.avatar ?? undefined} />
 									<AvatarFallback className="text-xs">
-										{getInitials(foundUser.name)}
+										{getInitials(selectedUser.name)}
 									</AvatarFallback>
 								</Avatar>
-								<div>
-									<p className="text-sm font-medium">
-										{foundUser.name}
+								<div className="min-w-0 flex-1">
+									<p className="text-sm font-medium truncate">{selectedUser.name}</p>
+									<p className="text-xs text-muted-foreground truncate">{selectedUser.email}</p>
+								</div>
+								<button
+									type="button"
+									onClick={resetDialog}
+									className="text-xs text-muted-foreground hover:text-foreground shrink-0">
+									Change
+								</button>
+							</div>
+						)}
+
+						{/* Not found — invite placeholder */}
+						{notFound && emailInput.trim() && (
+							<div className="flex items-center gap-3 rounded-lg border border-dashed p-3 text-muted-foreground">
+								<MailQuestion className="size-5 shrink-0" />
+								<div className="min-w-0">
+									<p className="text-sm font-medium text-foreground truncate">
+										{emailInput}
 									</p>
-									<p className="text-xs text-muted-foreground">
-										{foundUser.email}
+									<p className="text-xs">
+										Not registered — an invitation will be sent.
 									</p>
 								</div>
 							</div>
 						)}
 
+						{/* Role */}
 						<FormField
 							control={form.control}
 							name="role"
@@ -209,14 +284,12 @@ export function AddMemberDialog({
 							<Button
 								type="button"
 								variant="outline"
-								onClick={() => setAddOpen(false)}>
+								onClick={() => { setAddOpen(false); resetDialog(); }}>
 								Cancel
 							</Button>
-							<Button type="submit" disabled={isPending || !foundUser}>
-								{isPending && (
-									<Loader2 className="size-4 animate-spin" />
-								)}
-								Add member
+							<Button type="submit" disabled={isPending || (!selectedUser && !notFound)}>
+								{isPending && <Loader2 className="size-4 animate-spin" />}
+								{notFound ? "Send invitation" : "Add member"}
 							</Button>
 						</div>
 					</form>
@@ -231,47 +304,9 @@ export function ProjectMembers({
 	members,
 	canManage,
 }: ProjectMembersProps) {
-	const [addOpen, setAddOpen] = useState(false);
 	const [removeTarget, setRemoveTarget] = useState<ProjectMember | null>(null);
-	const [userSearch, setUserSearch] = useState("");
-	const [foundUser, setFoundUser] = useState<User | null>(null);
-	const [searching, setSearching] = useState(false);
 	const { mutate, isPending } = useManageMember(projectId);
 	const { user: currentUser } = useAuthStore();
-
-	const form = useForm<AddMemberFormData>({
-		resolver: yupResolver(addMemberSchema),
-		defaultValues: { userId: 0, role: "member" },
-	});
-
-	const searchUser = async () => {
-		setSearching(true);
-		try {
-			const userId = parseInt(userSearch);
-			if (isNaN(userId)) return;
-			const res = await userApi.getById(userId);
-			setFoundUser(res.data.data);
-			form.setValue("userId", userId);
-		} catch {
-			setFoundUser(null);
-		} finally {
-			setSearching(false);
-		}
-	};
-
-	const handleAddMember = (data: AddMemberFormData) => {
-		mutate(
-			{ action: "add", userId: data.userId, role: data.role },
-			{
-				onSuccess: () => {
-					setAddOpen(false);
-					form.reset();
-					setFoundUser(null);
-					setUserSearch("");
-				},
-			},
-		);
-	};
 
 	const handleRemoveMember = () => {
 		if (!removeTarget) return;

@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useProjectContext } from "~/components/providers/project-slug-provider";
 import { getProjectSocket } from "~/lib/socket";
 import { useAuthStore } from "~/stores/auth";
 import type {
@@ -12,15 +13,17 @@ import { taskKeys } from "~/queries/use-tasks";
 
 export function useProjectSocket(projectId: number) {
 	const qc = useQueryClient();
-	const { accessToken } = useAuthStore();
+	const { accessToken, user } = useAuthStore();
+	const userId = user?.id!;
+	const { setOnlineUsers } = useProjectContext();
 
 	useEffect(() => {
-		if (!projectId) return;
+		if (!projectId || !userId) return;
 
 		const socket = getProjectSocket(projectId);
 
 		socket.on("project:joined", (data) => {
-			console.log("project:joined", data);
+			console.log("Joined:", data);
 		});
 
 		socket.on("task:created", (task: TaskCreatedPayload) => {
@@ -61,10 +64,15 @@ export function useProjectSocket(projectId: number) {
 		});
 
 		socket.on("user:typing", (data) => {
-			console.log(data);
+			console.log(`user started typing`, data);
 		});
+
 		socket.on("user:typing-stop", (data) => {
-			console.log(data);
+			console.log(`user stopped typing`, data);
+		});
+
+		socket.on("presence:updated", (data) => {
+			setOnlineUsers(data.users ?? []);
 		});
 
 		return () => {
@@ -72,8 +80,9 @@ export function useProjectSocket(projectId: number) {
 			socket.off("task:created");
 			socket.off("task:updated");
 			socket.off("task:deleted");
-			socket.off("user:typing"); // ✅ Fixed
-			socket.off("user:typing-stop"); // ✅ Fixed
+			socket.off("user:typing");
+			socket.off("user:typing-stop");
+			socket.off("presence:updated");
 		};
-	}, [accessToken, projectId, qc]);
+	}, [accessToken, projectId, qc, userId, setOnlineUsers]);
 }

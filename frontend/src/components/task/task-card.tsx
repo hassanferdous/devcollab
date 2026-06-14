@@ -47,7 +47,8 @@ const statusMap: Record<TaskPriority, string> = {
 	urgent: "destructive",
 };
 
-function getInitials(name: string) {
+function getInitials(name: string | null | undefined) {
+	if (!name) return "?";
 	return name
 		.split(" ")
 		.map((n) => n[0])
@@ -62,7 +63,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onOpen }: TaskCardProps) {
-	const { members, effectiveRole } = useProjectContext();
+	const { members } = useProjectContext();
 	const {
 		attributes,
 		listeners,
@@ -78,8 +79,8 @@ export function TaskCard({ task, onOpen }: TaskCardProps) {
 		zIndex: isDragging ? 999 : undefined,
 	};
 
-	const can = useAbility();
-	const canEdit = can.can("update", { role: effectiveRole, subject: "Task" });
+	const can = useAbility<import("~/components/project/project-ability").AppAbility>();
+	const canEdit = can.can("update", "Task");
 
 	const priority = priorityConfig[task.priority] ?? priorityConfig.low;
 	const assignee = members?.find((m) => m.user_id === task.created_by);

@@ -3,21 +3,24 @@ import {
 	AlignLeft,
 	CalendarClock,
 	CalendarPlus,
+	Check,
 	CheckSquare,
 	ChevronDown,
 	Circle,
 	Flag,
 	Image,
+	Loader2,
 	MessageSquare,
 	MoreHorizontal,
 	Paperclip,
 	Plus,
+	Search,
 	Tag,
 	Trash2,
 	Users,
 	X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DateRange } from "react-day-picker";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
@@ -29,6 +32,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { Input } from "~/components/ui/input";
 import {
 	Popover,
 	PopoverClose,
@@ -37,20 +41,25 @@ import {
 } from "~/components/ui/popover";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import {
+	useAddAssignees,
+	useRemoveAssignee,
+	useTaskAssignees,
+} from "~/queries/use-tasks";
 import type {
 	ProjectMember,
 	Task,
+	TaskAssignee,
 	TaskPriority,
 	TaskStatus,
 	UpdateTaskFormData,
 } from "~/types";
-import { AddMemberDialog } from "../project/project-members";
-import { useParams } from "@tanstack/react-router";
 import { useProjectContext } from "../providers/project-slug-provider";
 import { Can } from "@casl/react";
 import { MessageForm } from "./message-form";
 
-function getInitials(name: string) {
+function getInitials(name: string | null | undefined) {
+	if (!name) return "?";
 	return name
 		.split(" ")
 		.map((n) => n[0])
@@ -107,6 +116,107 @@ const priorityConfig: Record<
 	},
 };
 
+interface TaskAssigneePickerProps {
+	projectId: number;
+	taskId: number;
+	members: ProjectMember[];
+	assignees: TaskAssignee[];
+	canEdit: boolean;
+}
+
+function TaskAssigneePicker({
+	projectId,
+	taskId,
+	members,
+	assignees,
+	canEdit,
+}: TaskAssigneePickerProps) {
+	const [open, setOpen] = useState(false);
+	const [search, setSearch] = useState("");
+	const { mutate: addAssignees, isPending: isAdding } = useAddAssignees(projectId, taskId);
+	const { mutate: removeAssignee, isPending: isRemoving } = useRemoveAssignee(projectId, taskId);
+
+	const assignedIds = useMemo(() => new Set(assignees.map((a) => a.user_id)), [assignees]);
+
+	const filtered = members.filter(
+		(m) =>
+			!search.trim() ||
+			m.name?.toLowerCase().includes(search.toLowerCase()) ||
+			m.email.toLowerCase().includes(search.toLowerCase()),
+	);
+
+	const toggle = (member: ProjectMember) => {
+		if (assignedIds.has(member.user_id)) {
+			removeAssignee(member.user_id);
+		} else {
+			addAssignees([member.user_id]);
+		}
+	};
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					className="size-8 rounded-full ml-1"
+					variant="accent"
+					size="icon"
+					disabled={!canEdit}
+					aria-haspopup>
+					<Plus className="size-3.5" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent align="start" className="w-64 p-2">
+				<p className="px-1 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+					Assign members
+				</p>
+				<div className="relative mb-2">
+					<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+					<Input
+						placeholder="Search..."
+						value={search}
+						onChange={(e) => setSearch(e.target.value)}
+						className="pl-8 h-8 text-sm"
+					/>
+				</div>
+				<div className="max-h-52 overflow-y-auto space-y-0.5">
+					{filtered.length === 0 && (
+						<p className="py-4 text-center text-xs text-muted-foreground">
+							No members found
+						</p>
+					)}
+					{filtered.map((m) => {
+						const assigned = assignedIds.has(m.user_id);
+						const busy = isAdding || isRemoving;
+						return (
+							<button
+								key={m.user_id}
+								type="button"
+								disabled={busy}
+								onClick={() => toggle(m)}
+								className={cn(
+									"flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-60",
+									assigned && "bg-accent/60",
+								)}>
+								<Avatar className="size-6 shrink-0">
+									<AvatarFallback className="text-[9px]">
+										{getInitials(m.name)}
+									</AvatarFallback>
+								</Avatar>
+								<div className="min-w-0 flex-1">
+									<p className="truncate text-xs font-medium">{m.name}</p>
+								</div>
+								{assigned && (
+									<Check className="size-3.5 shrink-0 text-primary" />
+								)}
+							</button>
+						);
+					})}
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 interface TaskDetailProps {
 	task: Task;
 	open: boolean;
@@ -124,12 +234,13 @@ export function TaskDetail({
 	onDelete,
 	isUpdating,
 }: TaskDetailProps) {
-	const { effectiveRole, members } = useProjectContext();
+	const { members, slug: projectId } = useProjectContext();
 
-	const { projectId } = useParams({ from: "/_app/projects/$projectId/" });
 	const [title, setTitle] = useState(task.title);
 	const [description, setDescription] = useState(task.description ?? "");
 	const [editingDescription, setEditingDescription] = useState(false);
+
+	const { data: assignees = [] } = useTaskAssignees(projectId, task.id, open);
 
 	const [dateRange, setDateRange] = useState<DateRange | undefined>({
 		from: undefined,
@@ -176,7 +287,7 @@ export function TaskDetail({
 				<div className="flex items-center justify-between px-3 py-2.5 shrink-0 border-b border-border">
 					<Can
 						do="update"
-						on={{ role: effectiveRole, subject: "Task" }}
+						on="Task"
 						passThrough>
 						{({ isAllowed }) => (
 							<DropdownMenu>
@@ -221,7 +332,7 @@ export function TaskDetail({
 						</button>
 						<Can
 							do="update"
-							on={{ role: effectiveRole, subject: "Task" }}>
+							on="Task">
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<button className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -290,7 +401,7 @@ export function TaskDetail({
 							{/* Start date pill */}
 							<Can
 								do="update"
-								on={{ role: effectiveRole, subject: "Task" }}
+								on="Task"
 								passThrough>
 								{({ isAllowed }) => (
 									<Popover>
@@ -401,7 +512,7 @@ export function TaskDetail({
 							{/* Priority pill – DropdownMenu */}
 							<Can
 								do="update"
-								on={{ role: effectiveRole, subject: "Task" }}
+								on="Task"
 								passThrough>
 								{({ isAllowed }) => (
 									<DropdownMenu>
@@ -438,10 +549,7 @@ export function TaskDetail({
 											).map((p) => (
 												<Can
 													do="update"
-													on={{
-														role: effectiveRole,
-														subject: "Task",
-													}}
+													on="Task"
 													passThrough>
 													{({ isAllowed }) => (
 														<DropdownMenuItem
@@ -484,45 +592,49 @@ export function TaskDetail({
 							</Can>
 						</div>
 
-						{/* Members */}
-						{members && members.length > 0 && (
-							<div>
-								<div className="flex items-center gap-2 mb-2">
-									<Users className="size-4 text-muted-foreground shrink-0" />
-									<span className="text-sm font-semibold text-muted-foreground">
-										Members
-									</span>
-								</div>
-								<div className="flex flex-wrap items-center ml-6">
-									{members?.map((m) => (
-										<div
-											className="not-first:-ml-2"
-											key={m.user_id}
-											title={m.name}>
-											<Avatar className="ring-2 ring-background inline-flex">
-												<AvatarImage src={undefined} />
-												<AvatarFallback className="text-[10px]">
-													{getInitials(m.name)}
-												</AvatarFallback>
-											</Avatar>
-										</div>
-									))}
-									<Can
-										do="update"
-										on={{ role: effectiveRole, subject: "Task" }}>
-										<AddMemberDialog projectId={+projectId}>
-											<Button
-												className="size-8 rounded-full ml-1"
-												variant="accent"
-												size="icon"
-												aria-haspopup>
-												<Plus className="size-3.5" />
-											</Button>
-										</AddMemberDialog>
-									</Can>
-								</div>
+						{/* Assignees */}
+						<div>
+							<div className="flex items-center gap-2 mb-2">
+								<Users className="size-4 text-muted-foreground shrink-0" />
+								<span className="text-sm font-semibold text-muted-foreground">
+									Assignees
+								</span>
 							</div>
-						)}
+							<div className="flex flex-wrap items-center ml-6">
+								{assignees.length === 0 && (
+									<span className="text-xs text-muted-foreground mr-2">
+										No assignees
+									</span>
+								)}
+								{assignees.map((a) => (
+									<div
+										className="not-first:-ml-2"
+										key={a.user_id}
+										title={a.name ?? a.email}>
+										<Avatar className="size-7 ring-2 ring-background inline-flex">
+											<AvatarImage src={a.avatar ?? undefined} />
+											<AvatarFallback className="text-[9px]">
+												{getInitials(a.name ?? a.email)}
+											</AvatarFallback>
+										</Avatar>
+									</div>
+								))}
+								<Can
+									do="update"
+									on="Task"
+									passThrough>
+									{({ isAllowed }) => (
+										<TaskAssigneePicker
+											projectId={projectId}
+											taskId={task.id}
+											members={members ?? []}
+											assignees={assignees}
+											canEdit={isAllowed}
+										/>
+									)}
+								</Can>
+							</div>
+						</div>
 
 						{/* Description */}
 						<div>
@@ -535,7 +647,7 @@ export function TaskDetail({
 								</div>
 								<Can
 									do="update"
-									on={{ role: effectiveRole, subject: "Task" }}>
+									on="Task">
 									<button
 										onClick={() => setEditingDescription(true)}
 										className="rounded-md px-3 py-1 text-xs text-muted-foreground bg-muted hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -575,7 +687,7 @@ export function TaskDetail({
 								) : (
 									<Can
 										do="update"
-										on={{ role: effectiveRole, subject: "Task" }}
+										on="Task"
 										passThrough>
 										{({ isAllowed }) => (
 											<div

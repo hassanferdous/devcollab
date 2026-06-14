@@ -15,6 +15,13 @@ interface ServerToClientEvents {
 	"task:deleted": (data: TaskDeletedPayload) => void;
 	"user:typing": (data: any) => void;
 	"user:typing-stop": (data: any) => void;
+	"presence:updated": (data: {
+		projectId: number;
+		userId: number;
+		isOnline: "join" | "leave";
+		onlineCount: number;
+		users: any[];
+	}) => void;
 }
 
 interface ClientToServerEvents {
@@ -23,29 +30,37 @@ interface ClientToServerEvents {
 }
 
 type ProjectSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
-
-let socket: ProjectSocket | null = null;
+const socketMap = new Map<number | undefined, ProjectSocket>();
 
 export function getProjectSocket(projectId?: number): ProjectSocket {
-	if (socket?.connected) return socket;
+	const key = projectId;
 
-	socket = io(`${SOCKET_URL}/project`, {
+	if (socketMap.has(key)) {
+		const sock = socketMap.get(key)!;
+		if (sock.connected) return sock;
+	}
+
+	const newSocket = io(`${SOCKET_URL}/project`, {
 		query: projectId ? { projectId } : {},
 		transports: ["websocket", "polling"],
 		autoConnect: true,
 		withCredentials: true,
 	});
 
-	return socket;
+	socketMap.set(key, newSocket);
+	return newSocket;
 }
 
-export function disconnectSocket() {
-	if (socket) {
-		socket.disconnect();
-		socket = null;
+export function disconnectSocket(projectId?: number) {
+	const key = projectId;
+	const sock = socketMap.get(key);
+	if (sock) {
+		sock.disconnect();
+		socketMap.delete(key);
 	}
 }
 
-export function getSocket(): ProjectSocket | null {
-	return socket;
+export function getSocket(projectId?: number): ProjectSocket | null {
+	const key = projectId;
+	return socketMap.get(key) ?? null;
 }

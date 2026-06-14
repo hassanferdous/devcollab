@@ -16,6 +16,7 @@ const applyServerHeaders = createIsomorphicFn()
 		config.headers["Cookie"] = headers.get("cookie");
 		config.headers["Referer"] = headers.get("referer");
 		config.headers["Origin"] = headers.get("origin");
+		config.headers["Authorization"] = headers.get("Authorization");
 		return config;
 	})
 	.client((config: InternalAxiosRequestConfig) => {

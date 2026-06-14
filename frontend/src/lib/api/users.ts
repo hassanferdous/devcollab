@@ -1,7 +1,8 @@
 import { api } from "./client";
 
 export const userApi = {
-	getAll: () => api.get("/users"),
+	getAll: (params?: { search?: string; page?: number; limit?: number }) =>
+		api.get("/users", { params }),
 	getById: (id: number) => api.get(`/users/${id}`),
 	update: (
 		id: number,

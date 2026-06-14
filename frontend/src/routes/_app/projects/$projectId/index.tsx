@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Users } from "lucide-react";
 import { Suspense, useState } from "react";
-import { KanbanBoard } from "~/components/task/kanban-board";
-import { ProjectMembers } from "~/components/project/project-members";
 import { AppHeader } from "~/components/layout/app-header";
+import { ProjectAbilityProvider } from "~/components/project/project-ability";
+import { ProjectMembers } from "~/components/project/project-members";
+import {
+	ProjectSlugProvider,
+	useProjectContext,
+} from "~/components/providers/project-slug-provider";
+import { KanbanBoard } from "~/components/task/kanban-board";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
-import { Skeleton } from "~/components/ui/skeleton";
-import { useAuthStore } from "~/stores/auth";
-import type { MemberRole, ProjectMember, Task } from "~/types";
 import {
 	Sheet,
 	SheetContent,
@@ -15,25 +18,25 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from "~/components/ui/sheet";
+import { Skeleton } from "~/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import {
 	projectQueryOptions,
 	useProjectSuspense,
 } from "~/queries/use-projects";
 import { tasksQueryOptions, useTasks } from "~/queries/use-tasks";
-import { ProjectAbilityProvider } from "~/components/project/project-ability";
-import {
-	ProjectSlugProvider,
-	useProjectContext,
-} from "~/components/providers/project-slug-provider";
-import { number } from "yup";
+import { useAuthStore } from "~/stores/auth";
+import type { MemberRole, ProjectMember, Task } from "~/types";
 
 export const Route = createFileRoute("/_app/projects/$projectId/")({
 	loader: async ({ context: { queryClient }, params }) => {
 		const id = Number(params.projectId);
-		return Promise.all([
+		const data = Promise.all([
 			queryClient.prefetchQuery(projectQueryOptions(id)),
 			queryClient.prefetchQuery(tasksQueryOptions(id)),
 		]);
+
+		return data;
 	},
 	pendingMs: 0,
 	pendingComponent: ProjectDetailSkeleton,
@@ -125,6 +128,60 @@ function TaskCounts({ projectId }: { projectId: number }) {
 	);
 }
 
+function getInitials(name: string | null) {
+	if (!name) return "?";
+	return name
+		.split(" ")
+		.map((n) => n[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
+}
+
+function OnlineAvatars() {
+	const { onlineUsers } = useProjectContext();
+	if (onlineUsers.length === 0) return null;
+
+	const visible = onlineUsers.slice(0, 5);
+	const overflow = onlineUsers.length - visible.length;
+
+	return (
+		<div className="flex items-center gap-1.5">
+			<span className="relative flex size-2">
+				<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+				<span className="relative inline-flex size-2 rounded-full bg-green-500" />
+			</span>
+			<div className="flex items-center">
+				{visible.map((u) => (
+					<Tooltip key={u.id}>
+						<TooltipTrigger asChild>
+							<div className="not-first:-ml-2 cursor-default">
+								<Avatar className="size-7 ring-2 ring-background">
+									<AvatarImage src={u.avatar ?? undefined} />
+									<AvatarFallback className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+										{getInitials(u.name)}
+									</AvatarFallback>
+								</Avatar>
+							</div>
+						</TooltipTrigger>
+						<TooltipContent side="bottom" className="text-xs">
+							{u.name ?? u.email}
+						</TooltipContent>
+					</Tooltip>
+				))}
+				{overflow > 0 && (
+					<div className="-ml-2 flex size-7 items-center justify-center rounded-full bg-muted ring-2 ring-background text-[10px] font-medium text-muted-foreground">
+						+{overflow}
+					</div>
+				)}
+			</div>
+			<span className="text-xs text-muted-foreground hidden sm:inline">
+				{onlineUsers.length} online
+			</span>
+		</div>
+	);
+}
+
 function KanbanSection() {
 	const { slug } = useProjectContext();
 	const { data: tasksData } = useTasks(Number(slug));
@@ -137,7 +194,7 @@ function ProjectDetailPage() {
 	const id = parseInt(projectId);
 	const [membersOpen, setMembersOpen] = useState(false);
 
-	const { data: project } = useProjectSuspense(id);
+	const { data: project, isSuccess } = useProjectSuspense(id);
 	const { user } = useAuthStore();
 
 	const members: ProjectMember[] = project?.members ?? [];
@@ -156,6 +213,8 @@ function ProjectDetailPage() {
 			<ProjectAbilityProvider>
 				<AppHeader
 					actions={
+						<>
+						<OnlineAvatars />
 						<Sheet open={membersOpen} onOpenChange={setMembersOpen}>
 							<SheetTrigger asChild>
 								<Button variant="outline" size="sm">
@@ -176,6 +235,7 @@ function ProjectDetailPage() {
 								</div>
 							</SheetContent>
 						</Sheet>
+						</>
 					}
 				/>
 
