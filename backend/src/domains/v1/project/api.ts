@@ -13,7 +13,6 @@ import {
 	updateMemberSchema,
 	updateProjectSchema
 } from "./validation";
-import { Namespace } from "socket.io";
 
 const router = express.Router();
 
@@ -227,6 +226,7 @@ router.get("/", auth, async (req, res: Response) => {
  *       404:
  *         description: Project not found
  */
+
 router.get(
 	"/:projectId",
 	auth,
@@ -235,11 +235,7 @@ router.get(
 		const context = getRequestContext(req);
 		const id = +req.params.projectId;
 		const data = await ProjectServices.getById(id, context, req.project);
-		const nsp = req.app.get("projectNsp") as Namespace;
-		nsp.to(`project:${id}`).emit("project:joined", {
-			projectId: id,
-			userId: req.user?.id
-		});
+
 		ApiResponse.success(
 			res,
 			"Successfully fetched project!",

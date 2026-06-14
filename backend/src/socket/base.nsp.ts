@@ -28,19 +28,20 @@ export abstract class BaseNamespace {
 					const decoded = JWT.verifyToken(token, "access") as User &
 						JwtPayload;
 					/**
-					 * @description Check if the refresh token exists in Redis and that the token is not expired
+					 * Check if the refresh token exists in Redis and that the token is not expired
 					 */
 					const isExists = await redisClient.get(
 						`refresh_token:${decoded.id}`
 					);
 
 					/**
-					 * @description If the refresh token does not exist in Redis, throw an error
+					 * If the refresh token does not exist in Redis, throw an error
 					 */
 					if (!isExists)
 						throwError("Invalid Token", StatusCodes.UNAUTHORIZED);
 
 					socket.data.userId = decoded.id;
+					socket.data.user = decoded;
 					if (socket.handshake.query.projectId) {
 						socket.data.projectId = +socket.handshake.query.projectId;
 					}
@@ -55,30 +56,22 @@ export abstract class BaseNamespace {
 	private listen() {
 		this.nsp.on("connection", (socket: Socket) => {
 			// eslint-disable-next-line no-console
-			console.log(`connected to ${this.nsp.name}`, {
-				id: socket.id,
-				userId: socket.data.userId,
-				projectId: socket.handshake.query.projectId
-			});
+			console.log(`connected to ${this.nsp.name}`);
 			this.on_connect(socket);
 
 			/**
-			 * @description Handle disconnect event
+			 * Handle disconnect event
 			 */
 			socket.on("disconnect", () => {
 				// eslint-disable-next-line no-console
-				console.log(`disconnected from ${this.nsp.name}`, {
-					id: socket.id,
-					userId: socket.data.userId,
-					projectId: socket.handshake.query.projectId
-				});
+				console.log(`disconnected from ${this.nsp.name}`);
 				this.on_disconnect(socket);
 			});
 		});
 	}
 
 	/**
-	 * @description Get all connected sockets
+	 * Get all connected sockets
 	 */
 	public get(): Namespace {
 		return this.nsp;

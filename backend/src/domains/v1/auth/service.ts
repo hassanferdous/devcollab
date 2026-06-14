@@ -122,20 +122,16 @@ export const AuthServices = {
 	 */
 	refreshTokens: async (req: Request, res: Response) => {
 		const $token =
-			req.body?.refresh_token || CookieUtil.getCookie(req, "refresh_token");
+			CookieUtil.getCookie(req, "refresh_token") ||
+			req.headers.authorization?.replace("Bearer ", "");
 		if (!$token)
 			return ApiResponse.error(
 				res,
 				"Refresh token not found",
-				StatusCodes.UNAUTHORIZED,
+				StatusCodes.BAD_REQUEST,
 				"REFRESH_TOKEN_NOT_FOUND"
 			);
-		/**
-		 * @description Verify refresh token
-		 *
-		 * @param {string} $token
-		 * @returns {User | null}
-		 */
+
 		const user = JWT.verifyToken($token, "refresh") as User;
 		if (!user)
 			return throwError(
@@ -148,9 +144,9 @@ export const AuthServices = {
 		 * @description Check if the refresh token exists and matches the one in Redis
 		 */
 		const storedToken = await redisClient.get(`refresh_token:${user.id}`);
-		if (!storedToken || storedToken !== $token) {
+		if (storedToken !== $token || !storedToken) {
 			return throwError(
-				"Invalid Or Expired refresh token",
+				"Invalid refresh token",
 				StatusCodes.UNAUTHORIZED,
 				"REFRESH_TOKEN_INVALID"
 			);
@@ -266,13 +262,13 @@ export const AuthServices = {
 		const $refresh_token = JWT.generateToken(user, "refresh");
 		CookieUtil.setCookie(res, "access_token", $access_token, {
 			httpOnly: true,
-			secure: true,
+			secure: config.isProduction,
 			sameSite: "strict",
 			maxAge: ms(config.env.JWT_ACCESS_EXPIRES_IN! as StringValue) // 15 minutes
 		});
 		CookieUtil.setCookie(res, "refresh_token", $refresh_token, {
 			httpOnly: true,
-			secure: true,
+			secure: config.isProduction,
 			sameSite: "strict",
 			maxAge: ms(config.env.JWT_REFRESH_EXPIRES_IN! as StringValue) // 7 days
 		});

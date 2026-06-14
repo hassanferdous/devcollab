@@ -1,6 +1,8 @@
 import db from "@/config/db";
+import { PaginatedData } from "@/types";
+import { withPaginationOptions } from "@/utils/withPaginationOptions";
 import { usersTable } from "@db/user.schema";
-import { eq, type InferInsertModel, type InferSelectModel } from "drizzle-orm";
+import { ilike, or, sql, eq, type InferInsertModel, type InferSelectModel } from "drizzle-orm";
 
 export type User = InferSelectModel<typeof usersTable>;
 export type NewUser = InferInsertModel<typeof usersTable>;
@@ -27,8 +29,29 @@ export const UserServices = {
 		return result[0] ?? null;
 	},
 
-	getAll: async (): Promise<User[]> => {
-		return db.select().from(usersTable);
+	getAll: async ({
+		search,
+		page,
+		limit
+	}: {
+		search?: string;
+		page?: number;
+		limit?: number;
+	} = {}): Promise<PaginatedData<User>> => {
+		const query = db
+			.select({ record: usersTable, count: sql<number>`count(*) over()` })
+			.from(usersTable);
+
+		const dynamicQuery = query.$dynamic();
+
+		if (search) {
+			const term = `%${search}%`;
+			dynamicQuery.where(
+				or(ilike(usersTable.email, term), ilike(usersTable.name, term))
+			);
+		}
+
+		return withPaginationOptions(dynamicQuery, page, limit) as Promise<PaginatedData<User>>;
 	},
 
 	update: async (id: number, data: Partial<NewUser>): Promise<User | null> => {

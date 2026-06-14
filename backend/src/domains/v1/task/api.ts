@@ -8,6 +8,8 @@ import express from "express";
 import { StatusCodes } from "http-status-codes";
 import { TaskServices } from "./service";
 import {
+	addAssigneesSchema,
+	assigneeParamsSchema,
 	createTaskSchema,
 	projectIdAndTaskIdSchema,
 	projectIdSchema,
@@ -421,6 +423,39 @@ router.delete(
 			data,
 			StatusCodes.NO_CONTENT
 		);
+	}
+);
+
+router.get(
+	"/:id/assignees",
+	auth,
+	validate({ params: projectIdAndTaskIdSchema }),
+	projectAccess("Task"),
+	async (req: Request, res: Response) => {
+		const data = await TaskServices.getAssignees(+req.params.id);
+		ApiResponse.success(res, "Successfully fetched assignees!", data, StatusCodes.OK);
+	}
+);
+
+router.post(
+	"/:id/assignees",
+	auth,
+	validate({ params: projectIdAndTaskIdSchema, body: addAssigneesSchema }),
+	projectAccess("Task"),
+	async (req: Request, res: Response) => {
+		await TaskServices.addAssignees(+req.params.id, req.body.user_ids);
+		ApiResponse.success(res, "Assignees added!", null, StatusCodes.ACCEPTED);
+	}
+);
+
+router.delete(
+	"/:id/assignees/:userId",
+	auth,
+	validate({ params: assigneeParamsSchema }),
+	projectAccess("Task"),
+	async (req: Request, res: Response) => {
+		await TaskServices.removeAssignee(+req.params.id, +req.params.userId);
+		ApiResponse.success(res, "Assignee removed!", null, StatusCodes.NO_CONTENT);
 	}
 );
 

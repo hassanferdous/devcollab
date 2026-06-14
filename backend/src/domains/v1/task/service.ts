@@ -1,9 +1,11 @@
 import db from "@/config/db";
-import { taskActivityLogTable, tasksTable } from "@/db/task.schema";
+import { taskActivityLogTable, taskMembersTable, tasksTable } from "@/db/task.schema";
+import { usersTable } from "@/db/user.schema";
 import { PaginatedData } from "@/types";
 import { throwError } from "@/utils/error";
 import { withPaginationOptions } from "@/utils/withPaginationOptions";
 import {
+	and,
 	eq,
 	sql,
 	type InferInsertModel,
@@ -12,6 +14,14 @@ import {
 import { StatusCodes } from "http-status-codes";
 import defineAbilityFor, { MemberAbilityContext } from "../project/ability";
 import { Namespace } from "socket.io";
+
+export type TaskAssignee = {
+	user_id: number;
+	name: string | null;
+	email: string;
+	avatar: string | null;
+	assigned_at: Date | null;
+};
 
 export type Task = InferSelectModel<typeof tasksTable>;
 export type NewTask = InferInsertModel<typeof tasksTable>;
@@ -152,6 +162,38 @@ export const TaskServices = {
 		});
 
 		return result;
+	},
+
+	getAssignees: async (taskId: number): Promise<TaskAssignee[]> => {
+		return db
+			.select({
+				user_id: usersTable.id,
+				name: usersTable.name,
+				email: usersTable.email,
+				avatar: usersTable.avatar,
+				assigned_at: taskMembersTable.assigned_at
+			})
+			.from(taskMembersTable)
+			.innerJoin(usersTable, eq(taskMembersTable.user_id, usersTable.id))
+			.where(eq(taskMembersTable.task_id, taskId));
+	},
+
+	addAssignees: async (taskId: number, userIds: number[]): Promise<void> => {
+		await db
+			.insert(taskMembersTable)
+			.values(userIds.map((user_id) => ({ task_id: taskId, user_id })))
+			.onConflictDoNothing();
+	},
+
+	removeAssignee: async (taskId: number, userId: number): Promise<void> => {
+		await db
+			.delete(taskMembersTable)
+			.where(
+				and(
+					eq(taskMembersTable.task_id, taskId),
+					eq(taskMembersTable.user_id, userId)
+				)
+			);
 	},
 
 	/**

@@ -1,3 +1,4 @@
+import auth from "@/middlewares/auth";
 import validate from "@/middlewares/validator";
 import express from "express";
 import passport from "passport";
@@ -5,12 +6,10 @@ import { AuthServices } from "./service";
 import {
 	forgotPasswordSchema,
 	loginSchema,
-	refreshTokensSchema,
 	registerSchema,
 	resetPasswordSchema,
 	verifyOTPSchema
 } from "./validation";
-import auth from "@/middlewares/auth";
 
 const router = express.Router();
 
@@ -235,17 +234,11 @@ router.post("/logout", AuthServices.logout);
  * /api/v1/auth/refresh-token:
  *   post:
  *     summary: Refresh access token
- *     description: Generates a new access token using a refresh token supplied in the body or cookies.
+ *     description: Generates a new access token using a refresh token supplied in the cookies or headers.
  *     tags: [Auth]
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               refresh_token:
- *                 type: string
- *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Tokens refreshed successfully
@@ -277,11 +270,7 @@ router.post("/logout", AuthServices.logout);
  *       401:
  *         description: Refresh token invalid or expired
  */
-router.post(
-	"/refresh-token",
-	validate({ body: refreshTokensSchema }),
-	AuthServices.refreshTokens
-);
+router.post("/refresh-token", AuthServices.refreshTokens);
 
 /**
  * @swagger

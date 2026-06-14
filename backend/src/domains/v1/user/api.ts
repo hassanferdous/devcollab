@@ -2,6 +2,7 @@ import auth from "@/middlewares/auth";
 import validate from "@/middlewares/validator";
 import { throwError } from "@/utils/error";
 import { ApiResponse } from "@/utils/response";
+import { paginationSchema } from "@/validator/pagination";
 import type { Request, Response } from "express";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
@@ -146,8 +147,17 @@ router.post(
  *       401:
  *         description: Unauthorized
  */
-router.get("/", auth, async (_, res: Response) => {
-	const data = await UserServices.getAll();
+router.get("/", auth, validate({ query: paginationSchema }), async (req: Request, res: Response) => {
+	const { search, page, limit } = req.query as {
+		search?: string;
+		page?: string;
+		limit?: string;
+	};
+	const data = await UserServices.getAll({
+		search,
+		page: page ? Number(page) : undefined,
+		limit: limit ? Number(limit) : undefined
+	});
 	ApiResponse.success(
 		res,
 		"Successfully fetched all user!",
