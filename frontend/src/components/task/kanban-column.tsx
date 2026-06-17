@@ -125,14 +125,10 @@ export function KanbanColumn({
 						{tasks.length === 0 && (
 							<div className="flex h-16 items-center justify-center rounded-lg border-2 border-dashed border-black/10 dark:border-white/10">
 								<p className="text-xs text-foreground/40">
-									<Can
-										do="update"
-										on="Task">
+									<Can do="update" on="Task">
 										Drop tasks here
 									</Can>
-									<Can
-										do="read"
-										on="Task">
+									<Can do="read" on="Task">
 										No tasks
 									</Can>
 								</p>

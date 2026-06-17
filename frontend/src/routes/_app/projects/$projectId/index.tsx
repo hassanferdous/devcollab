@@ -19,7 +19,11 @@ import {
 	SheetTrigger,
 } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "~/components/ui/tooltip";
 import {
 	projectQueryOptions,
 	useProjectSuspense,
@@ -214,27 +218,27 @@ function ProjectDetailPage() {
 				<AppHeader
 					actions={
 						<>
-						<OnlineAvatars />
-						<Sheet open={membersOpen} onOpenChange={setMembersOpen}>
-							<SheetTrigger asChild>
-								<Button variant="outline" size="sm">
-									<Users className="size-4" />
-									Members ({members.length})
-								</Button>
-							</SheetTrigger>
-							<SheetContent className="w-[400px] sm:w-[480px]">
-								<SheetHeader>
-									<SheetTitle>Project members</SheetTitle>
-								</SheetHeader>
-								<div className="flex-1 overflow-y-auto px-4 pb-4">
-									<ProjectMembers
-										projectId={id}
-										members={members}
-										canManage={canManage}
-									/>
-								</div>
-							</SheetContent>
-						</Sheet>
+							<OnlineAvatars />
+							<Sheet open={membersOpen} onOpenChange={setMembersOpen}>
+								<SheetTrigger asChild>
+									<Button variant="outline" size="sm">
+										<Users className="size-4" />
+										Members ({members.length})
+									</Button>
+								</SheetTrigger>
+								<SheetContent className="w-[400px] sm:w-[480px]">
+									<SheetHeader>
+										<SheetTitle>Project members</SheetTitle>
+									</SheetHeader>
+									<div className="flex-1 overflow-y-auto px-4 pb-4">
+										<ProjectMembers
+											projectId={id}
+											members={members}
+											canManage={canManage}
+										/>
+									</div>
+								</SheetContent>
+							</Sheet>
 						</>
 					}
 				/>
@@ -274,7 +278,7 @@ function ProjectDetailPage() {
 						</Suspense>
 					</div>
 
-					<div className="flex-1 overflow-auto p-6">
+					<div className="flex-1 overflow-auto py-4 px-6">
 						<Suspense fallback={<KanbanSkeleton />}>
 							<KanbanSection />
 						</Suspense>
