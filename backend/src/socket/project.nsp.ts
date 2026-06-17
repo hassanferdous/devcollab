@@ -1,6 +1,7 @@
 import { User } from "@/domains/v1/user/service";
-import { Server, Socket } from "socket.io";
+import { Namespace, Server, Socket } from "socket.io";
 import { BaseNamespace } from "./base.nsp";
+import { socketAuthMiddleware } from "./auth.socket";
 
 interface SocketData {
 	userId: string;
@@ -13,6 +14,18 @@ export class ProjectNamespace extends BaseNamespace {
 		super(io, "/project");
 	}
 
+	/**
+	 * Register middleware for the namespace
+	 * @param nsp - The namespace
+	 */
+	protected registerMiddleware(nsp: Namespace): void {
+		nsp.use(socketAuthMiddleware);
+	}
+
+	/**
+	 * Handle connect event
+	 * @param socket
+	 */
 	protected on_connect(socket: Socket) {
 		// Add user to room based on projectId
 		const room = `project:${socket.data.projectId}`;
@@ -45,6 +58,11 @@ export class ProjectNamespace extends BaseNamespace {
 		this.updateRoomPresence(socket.data.projectId, socket);
 	}
 
+	/**
+	 * Handle disconnect event
+	 *
+	 * @param socket
+	 */
 	protected on_disconnect(socket: Socket) {
 		this.updateRoomPresence(socket.data.projectId, socket);
 	}

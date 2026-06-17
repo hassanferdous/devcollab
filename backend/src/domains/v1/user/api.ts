@@ -8,6 +8,8 @@ import express from "express";
 import { StatusCodes } from "http-status-codes";
 import { UserServices } from "./service";
 import { createUserSchema } from "./validation";
+import { getOrSet } from "@/utils/cache";
+import redisClient from "@/config/redis";
 
 const router = express.Router();
 
@@ -147,24 +149,29 @@ router.post(
  *       401:
  *         description: Unauthorized
  */
-router.get("/", auth, validate({ query: paginationSchema }), async (req: Request, res: Response) => {
-	const { search, page, limit } = req.query as {
-		search?: string;
-		page?: string;
-		limit?: string;
-	};
-	const data = await UserServices.getAll({
-		search,
-		page: page ? Number(page) : undefined,
-		limit: limit ? Number(limit) : undefined
-	});
-	ApiResponse.success(
-		res,
-		"Successfully fetched all user!",
-		data,
-		StatusCodes.OK
-	);
-});
+router.get(
+	"/",
+	auth,
+	validate({ query: paginationSchema }),
+	async (req: Request, res: Response) => {
+		const { search, page, limit } = req.query as {
+			search?: string;
+			page?: string;
+			limit?: string;
+		};
+		const data = await UserServices.getAll({
+			search,
+			page: page ? Number(page) : undefined,
+			limit: limit ? Number(limit) : undefined
+		});
+		ApiResponse.success(
+			res,
+			"Successfully fetched all user!",
+			data,
+			StatusCodes.OK
+		);
+	}
+);
 
 /**
  * @swagger
@@ -204,7 +211,9 @@ router.get("/", auth, validate({ query: paginationSchema }), async (req: Request
  */
 router.get("/:id", async (req: Request, res: Response) => {
 	const id = +req.params.id;
-	const data = await UserServices.getById(id);
+	const data = await getOrSet(`user:${id}`, 300, async () => {
+		return await UserServices.getById(id);
+	});
 	if (!data) return throwError("User not found", StatusCodes.NOT_FOUND);
 	ApiResponse.success(res, "Successfully fetched user!", data, StatusCodes.OK);
 });
@@ -261,6 +270,7 @@ router.put("/:id", async (req: Request, res: Response) => {
 	const id = +req.params.id;
 	await UserServices.update(id, req.body);
 	const data = await UserServices.getById(id);
+	await redisClient.del(`user:${id}`);
 	ApiResponse.success(
 		res,
 		"Successfully updated user!",
@@ -290,6 +300,7 @@ router.put("/:id", async (req: Request, res: Response) => {
 router.delete("/:id", async (req: Request, res: Response) => {
 	const id = +req.params.id;
 	const data = await UserServices.delete(id);
+	await redisClient.del(`user:${id}`);
 	ApiResponse.success(
 		res,
 		"Successfully deleted user!",

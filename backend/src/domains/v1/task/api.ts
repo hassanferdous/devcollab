@@ -17,6 +17,8 @@ import {
 } from "./validation";
 import { Namespace } from "socket.io";
 import { paginationSchema } from "@/validator/pagination";
+import redisClient from "@/config/redis";
+import { getOrSet } from "@/utils/cache";
 
 const router = express.Router({
 	mergeParams: true
@@ -146,6 +148,7 @@ router.post(
 			context,
 			nsp
 		);
+		await redisClient.incr(`tasks:${req.params.projectId}:version`);
 		ApiResponse.success(
 			res,
 			"Successfully created new task!",
@@ -209,10 +212,17 @@ router.get(
 			limit?: number;
 			page?: number;
 		};
-		const data = await TaskServices.getAll(projectId, {
-			limit: queryParams.limit,
-			page: queryParams.page
-		});
+
+		const version =
+			(await redisClient.get(`tasks:${projectId}:version`)) || 1;
+		const cacheKey = `tasks:${projectId}:v:${version}:${JSON.stringify(queryParams)}`;
+		const data = await getOrSet(cacheKey, 60, () =>
+			TaskServices.getAll(projectId, {
+				limit: queryParams.limit,
+				page: queryParams.page
+			})
+		);
+
 		ApiResponse.success(
 			res,
 			"Successfully fetched all task!",
@@ -363,6 +373,7 @@ router.patch(
 			context,
 			nsp
 		);
+		await redisClient.incr(`tasks:${req.params.projectId}:version`);
 		ApiResponse.success(
 			res,
 			"Successfully updated task!",
@@ -417,6 +428,7 @@ router.delete(
 			context,
 			nsp
 		);
+		await redisClient.incr(`tasks:${req.params.projectId}:version`);
 		ApiResponse.success(
 			res,
 			"Successfully deleted task!",
@@ -433,7 +445,13 @@ router.get(
 	projectAccess("Task"),
 	async (req: Request, res: Response) => {
 		const data = await TaskServices.getAssignees(+req.params.id);
-		ApiResponse.success(res, "Successfully fetched assignees!", data, StatusCodes.OK);
+
+		ApiResponse.success(
+			res,
+			"Successfully fetched assignees!",
+			data,
+			StatusCodes.OK
+		);
 	}
 );
 
@@ -444,6 +462,7 @@ router.post(
 	projectAccess("Task"),
 	async (req: Request, res: Response) => {
 		await TaskServices.addAssignees(+req.params.id, req.body.user_ids);
+		await redisClient.incr(`tasks:${req.params.projectId}:version`);
 		ApiResponse.success(res, "Assignees added!", null, StatusCodes.ACCEPTED);
 	}
 );
@@ -455,7 +474,13 @@ router.delete(
 	projectAccess("Task"),
 	async (req: Request, res: Response) => {
 		await TaskServices.removeAssignee(+req.params.id, +req.params.userId);
-		ApiResponse.success(res, "Assignee removed!", null, StatusCodes.NO_CONTENT);
+		await redisClient.incr(`tasks:${req.params.projectId}:version`);
+		ApiResponse.success(
+			res,
+			"Assignee removed!",
+			null,
+			StatusCodes.NO_CONTENT
+		);
 	}
 );
 

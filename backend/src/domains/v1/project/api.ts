@@ -13,6 +13,8 @@ import {
 	updateMemberSchema,
 	updateProjectSchema
 } from "./validation";
+import { getOrSet } from "@/utils/cache";
+import redisClient from "@/config/redis";
 
 const router = express.Router();
 
@@ -234,7 +236,9 @@ router.get(
 	async (req: Request, res: Response) => {
 		const context = getRequestContext(req);
 		const id = +req.params.projectId;
-		const data = await ProjectServices.getById(id, context, req.project);
+		const data = await getOrSet(`project:${id}`, 300, async () => {
+			return await ProjectServices.getById(id, context, req.project);
+		});
 
 		ApiResponse.success(
 			res,
@@ -309,7 +313,7 @@ router.put(
 		const context = getRequestContext(req);
 		const id = +req.params.projectId;
 		const data = await ProjectServices.update(id, req.body, context);
-
+		await redisClient.del(`project:${id}`);
 		ApiResponse.success(
 			res,
 			"Successfully updated project!",
@@ -353,6 +357,7 @@ router.delete(
 		const context = getRequestContext(req);
 		const id = +req.params.projectId;
 		const data = await ProjectServices.delete(id, context);
+		await redisClient.del(`project:${id}`);
 		ApiResponse.success(
 			res,
 			"Successfully deleted project!",
@@ -441,6 +446,7 @@ router.patch(
 			},
 			context
 		);
+		await redisClient.del(`project:${id}`);
 		ApiResponse.success(
 			res,
 			`Successfully ${req.body.action === "add" ? "added" : "removed"} project member!`,

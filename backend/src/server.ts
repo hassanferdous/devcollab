@@ -13,7 +13,7 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import morgan from "morgan";
 import passport from "passport";
-import { useSocket } from "./config/io";
+import { initSocketIO } from "./socket/io";
 import cors from "cors";
 
 const app = express();
@@ -29,7 +29,7 @@ app.use(
 /**
  * Register Socket
  */
-const { server, io } = useSocket(app);
+const { server, io } = initSocketIO(app);
 app.set("io", io);
 /*
  * Register Passport

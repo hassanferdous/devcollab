@@ -1,58 +1,13 @@
-import redisClient from "@/config/redis";
-import { User } from "@/domains/v1/user/service";
-import { CookieUtil } from "@/utils/cookie";
-import { throwError } from "@/utils/error";
-import JWT from "@/utils/jwt";
-import { StatusCodes } from "http-status-codes";
-import { JwtPayload } from "jsonwebtoken";
-import { ExtendedError, Namespace, Server, Socket } from "socket.io";
+import { Namespace, Server, Socket } from "socket.io";
 
 export abstract class BaseNamespace {
 	protected nsp: Namespace;
 	constructor(io: Server, namespace: string) {
 		this.nsp = io.of(namespace);
-		this.applyMiddleware();
+		this.registerMiddleware(this.nsp);
 		this.listen();
 	}
-	private applyMiddleware() {
-		this.nsp.use(
-			async (socket: Socket, next: (err?: ExtendedError) => void) => {
-				const cookies = CookieUtil.parseCookieString(
-					socket.handshake.headers.cookie
-				);
-				const token = cookies.access_token || socket.handshake.auth.token;
-				try {
-					if (!token) {
-						throwError("Invalid Token", StatusCodes.UNAUTHORIZED);
-					}
-					const decoded = JWT.verifyToken(token, "access") as User &
-						JwtPayload;
-					/**
-					 * Check if the refresh token exists in Redis and that the token is not expired
-					 */
-					const isExists = await redisClient.get(
-						`refresh_token:${decoded.id}`
-					);
 
-					/**
-					 * If the refresh token does not exist in Redis, throw an error
-					 */
-					if (!isExists)
-						throwError("Invalid Token", StatusCodes.UNAUTHORIZED);
-
-					socket.data.userId = decoded.id;
-					socket.data.user = decoded;
-					if (socket.handshake.query.projectId) {
-						socket.data.projectId = +socket.handshake.query.projectId;
-					}
-
-					next();
-				} catch (error: unknown) {
-					return next(new Error((error as { message: string }).message));
-				}
-			}
-		);
-	}
 	private listen() {
 		this.nsp.on("connection", (socket: Socket) => {
 			// eslint-disable-next-line no-console
@@ -71,11 +26,29 @@ export abstract class BaseNamespace {
 	}
 
 	/**
-	 * Get all connected sockets
+	 * Get the namespace
+	 *
+	 * @returns {Namespace} - The namespace
 	 */
 	public get(): Namespace {
 		return this.nsp;
 	}
+
+	/**
+	 * Handle connect event
+	 * @param socket - The socket
+	 */
 	protected abstract on_connect(socket: Socket): void;
+
+	/**
+	 * Handle disconnect event
+	 * @param socket - The socket
+	 */
 	protected on_disconnect(_socket: Socket): void {}
+
+	/**
+	 * Register middleware
+	 * @param nsp - The namespace
+	 */
+	protected registerMiddleware(_nsp: Namespace): void {}
 }
