@@ -1,4 +1,12 @@
 import auth from "@/middlewares/auth";
+import {
+	forgotPasswordLimiter,
+	loginLimiter,
+	otpLimiter,
+	refreshTokenLimiter,
+	registerLimiter,
+	resetPasswordLimiter
+} from "@/middlewares/rate-limiter";
 import validate from "@/middlewares/validator";
 import express from "express";
 import passport from "passport";
@@ -86,6 +94,7 @@ const router = express.Router();
  */
 router.post(
 	"/login",
+	loginLimiter,
 	validate({ body: loginSchema }),
 	AuthServices.callback_credential
 );
@@ -159,6 +168,7 @@ router.post(
  */
 router.post(
 	"/register",
+	registerLimiter,
 	validate({ body: registerSchema }),
 	AuthServices.register
 );
@@ -270,7 +280,7 @@ router.post("/logout", AuthServices.logout);
  *       401:
  *         description: Refresh token invalid or expired
  */
-router.post("/refresh-token", AuthServices.refreshTokens);
+router.post("/refresh-token", refreshTokenLimiter, AuthServices.refreshTokens);
 
 /**
  * @swagger
@@ -298,9 +308,9 @@ router.post("/refresh-token", AuthServices.refreshTokens);
  */
 router.post(
 	"/forgot-password",
-	// otpLimiter,
+	forgotPasswordLimiter,
 	validate({ body: forgotPasswordSchema }),
-	AuthServices.forgotPassword
+	AuthServices.resetPasswordRequest
 );
 
 /**
@@ -370,7 +380,7 @@ router.get("/me", auth, AuthServices.getMe);
  */
 router.post(
 	"/verify-otp",
-	// otpLimiter,
+	otpLimiter,
 	validate({ body: verifyOTPSchema }),
 	AuthServices.verifyOTPHandler
 );
@@ -406,7 +416,7 @@ router.post(
  */
 router.post(
 	"/reset-password",
-	// otpLimiter,
+	resetPasswordLimiter,
 	validate({ body: resetPasswordSchema }),
 	AuthServices.resetPassword
 );

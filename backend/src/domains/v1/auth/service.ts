@@ -183,13 +183,13 @@ export const AuthServices = {
 	},
 
 	/**
-	 * @description Forgot password
+	 * @description Reset Password request
 	 *
 	 * @param {Request} _req
 	 * @param {Response} _res
 	 * @returns {Promise<any>}
 	 */
-	forgotPassword: async (_req: Request, _res: Response) => {
+	resetPasswordRequest: async (_req: Request, _res: Response) => {
 		// Todo: Implement forgot password
 	},
 

@@ -15,9 +15,18 @@ import morgan from "morgan";
 import passport from "passport";
 import { initSocketIO } from "./socket/io";
 import cors from "cors";
+import { apiLimiter } from "./middlewares/rate-limiter";
 
 const app = express();
 
+/**
+ * Trust first proxy
+ */
+app.set("trust proxy", 1);
+
+/**
+ * Register CORS
+ */
 app.use(
 	cors({
 		origin: ["http://localhost:3000"],
@@ -67,7 +76,7 @@ async function connectDB(maxRetries: number = 5, delay: number = 1000) {
 /**
  * Register API v1 Routes
  */
-app.use("/api/v1", v1Router);
+app.use(config.app.apiPrefix, apiLimiter, v1Router);
 
 /**
  * Register Swagger API Documentation

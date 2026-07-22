@@ -1,0 +1,6 @@
+{
+	"dependencies": {
+		"rate-limit-redis": "^6.0.0",
+		"express-rate-limit": "^8.6.0"
+	}
+}
