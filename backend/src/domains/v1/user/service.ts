@@ -8,7 +8,8 @@ import {
 	sql,
 	eq,
 	type InferInsertModel,
-	type InferSelectModel
+	type InferSelectModel,
+	SQL
 } from "drizzle-orm";
 
 export type User = InferSelectModel<typeof usersTable>;
@@ -45,20 +46,20 @@ export const UserServices = {
 		page?: number;
 		limit?: number;
 	} = {}): Promise<Paginated<User>> => {
+		const filters: SQL[] = [];
+		const term = `%${search}%`;
+		if (search) {
+			filters.concat([
+				ilike(usersTable.email, term),
+				ilike(usersTable.name, term)
+			]);
+		}
 		const query = db
 			.select({ record: usersTable, count: sql<number>`count(*) over()` })
-			.from(usersTable);
+			.from(usersTable)
+			.where(or(...filters));
 
-		const dynamicQuery = query.$dynamic();
-
-		if (search) {
-			const term = `%${search}%`;
-			dynamicQuery.where(
-				or(ilike(usersTable.email, term), ilike(usersTable.name, term))
-			);
-		}
-
-		return withPagination(dynamicQuery, page, limit) as Promise<
+		return withPagination(query.$dynamic(), { limit, page }) as Promise<
 			Paginated<User>
 		>;
 	},

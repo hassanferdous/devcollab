@@ -19,7 +19,9 @@ export async function withPagination<T extends PgSelect>(
 		orderByColumn?: OrderByColumn[];
 	}
 ): Promise<Paginated<unknown>> {
-	const { page = 1, limit = 15, orderByColumn } = options || {};
+	const { orderByColumn } = options || {};
+	const page = Number(options?.page) || 1;
+	const limit = Number(options?.limit) || 15;
 	if (orderByColumn) qb.orderBy(...orderByColumn);
 	const data = await qb.limit(limit).offset((page - 1) * limit);
 	const count = Number(data?.[0]?.count) || 0;

@@ -24,7 +24,7 @@ export const tasksQueryOptions = (projectId: number) =>
 		queryFn: async () => {
 			await wait(1500);
 			return taskApi
-				.getAll(projectId, { limit: 100 })
+				.getAll(projectId, { limit: 10, page: 1 })
 				.then((r) => r.data.data);
 		},
 		enabled: !!projectId,
@@ -79,11 +79,17 @@ export function useDeleteTask(projectId: number) {
 	});
 }
 
-export function useTaskAssignees(projectId: number, taskId: number, enabled = true) {
+export function useTaskAssignees(
+	projectId: number,
+	taskId: number,
+	enabled = true,
+) {
 	return useQuery({
 		queryKey: taskKeys.assignees(projectId, taskId),
 		queryFn: () =>
-			taskApi.getAssignees(projectId, taskId).then((r) => r.data.data as TaskAssignee[]),
+			taskApi
+				.getAssignees(projectId, taskId)
+				.then((r) => r.data.data as TaskAssignee[]),
 		enabled: enabled && !!projectId && !!taskId,
 	});
 }
@@ -91,17 +97,23 @@ export function useTaskAssignees(projectId: number, taskId: number, enabled = tr
 export function useAddAssignees(projectId: number, taskId: number) {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (userIds: number[]) => taskApi.addAssignees(projectId, taskId, userIds),
+		mutationFn: (userIds: number[]) =>
+			taskApi.addAssignees(projectId, taskId, userIds),
 		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: taskKeys.assignees(projectId, taskId) }),
+			qc.invalidateQueries({
+				queryKey: taskKeys.assignees(projectId, taskId),
+			}),
 	});
 }
 
 export function useRemoveAssignee(projectId: number, taskId: number) {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (userId: number) => taskApi.removeAssignee(projectId, taskId, userId),
+		mutationFn: (userId: number) =>
+			taskApi.removeAssignee(projectId, taskId, userId),
 		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: taskKeys.assignees(projectId, taskId) }),
+			qc.invalidateQueries({
+				queryKey: taskKeys.assignees(projectId, taskId),
+			}),
 	});
 }
