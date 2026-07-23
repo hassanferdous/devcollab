@@ -4,33 +4,33 @@ Real-time collaborative project/task manager. **TypeScript (ESM), Express 5, Pos
 
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm dev` | Dev server with hot reload (`tsx watch src/server.ts`) |
-| `pnpm build` | Bundle to `dist/` (`tsup`, ESM, minified + sourcemaps) |
-| `pnpm start` | Run compiled prod build (`NODE_ENV=production node dist/server.js`) |
-| `pnpm seed` | Seed the database (`src/scripts/seed.ts`) |
-| `pnpm create:domain <name>` | Scaffold a new domain (see **Domain structure**) |
-| `pnpm lint` / `pnpm lint:fix` | ESLint (flat config, `eslint.config.js`) |
-| `pnpm exec drizzle-kit ...` | Migrations — config `drizzle.config.ts`, schema dir `src/db`, output `./drizzle` |
+| Command                       | Purpose                                                                          |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| `pnpm dev`                    | Dev server with hot reload (`tsx watch src/server.ts`)                           |
+| `pnpm build`                  | Bundle to `dist/` (`tsup`, ESM, minified + sourcemaps)                           |
+| `pnpm start`                  | Run compiled prod build (`NODE_ENV=production node dist/server.js`)              |
+| `pnpm seed`                   | Seed the database (`src/scripts/seed.ts`)                                        |
+| `pnpm create:domain <name>`   | Scaffold a new domain (see **Domain structure**)                                 |
+| `pnpm lint` / `pnpm lint:fix` | ESLint (flat config, `eslint.config.js`)                                         |
+| `pnpm exec drizzle-kit ...`   | Migrations — config `drizzle.config.ts`, schema dir `src/db`, output `./drizzle` |
 
 Docker: `compose.yaml` (+ `compose.dev.yaml` / `compose.prod.yaml`) — services `backend`, `postgresql`, `redis`.
 
 ## Directory map (`src/`)
 
-| Path | Purpose |
-| --- | --- |
-| `server.ts` | Entry: CORS → Socket.io init → passport → parsers → routes `/api/v1` → swagger → error handlers → DB connect (retry w/ backoff) → listen |
-| `config/` | `index.ts` (JSON+env config), `env.schema.ts` (Zod env validation), `db.ts` (Drizzle client), `redis.ts` (ioredis client), `swagger.ts` |
-| `db/` | Drizzle table schemas (`*.schema.ts`) |
-| `domains/v1/<domain>/` | Feature domains: `auth`, `user`, `project`, `task` |
-| `routes/v1.ts` | Mounts domain routers under `/api/v1`; health/welcome routes; 404 fallback |
-| `middlewares/` | `auth.ts`, `validator.ts`, `project-access.ts`, `global-error-handler.ts` |
-| `socket/` | `io.ts`, `base.nsp.ts`, `project.nsp.ts`, `auth.socket.ts` |
-| `utils/` | `response.ts`, `error.ts`, `cache.ts`, `jwt.ts`, `cookie.ts`, `password-hash.ts`, `getRequestContext.ts`, `withPaginationOptions.ts`, `formatZodError.ts` |
-| `validator/` | Shared Zod schemas: `pagination.ts`, `params.ts` |
-| `lib/logger.ts` | Winston logger (file transports in `logs/`) |
-| `scripts/` | `generate-domain.js`, `seed.ts` |
+| Path                   | Purpose                                                                                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server.ts`            | Entry: CORS → Socket.io init → passport → parsers → routes `/api/v1` → swagger → error handlers → DB connect (retry w/ backoff) → listen           |
+| `config/`              | `index.ts` (JSON+env config), `env.schema.ts` (Zod env validation), `db.ts` (Drizzle client), `redis.ts` (ioredis client), `swagger.ts`            |
+| `db/`                  | Drizzle table schemas (`*.schema.ts`)                                                                                                              |
+| `domains/v1/<domain>/` | Feature domains: `auth`, `user`, `project`, `task`                                                                                                 |
+| `routes/v1.ts`         | Mounts domain routers under `/api/v1`; health/welcome routes; 404 fallback                                                                         |
+| `middlewares/`         | `auth.ts`, `validator.ts`, `project-access.ts`, `global-error-handler.ts`                                                                          |
+| `socket/`              | `io.ts`, `base.nsp.ts`, `project.nsp.ts`, `auth.socket.ts`                                                                                         |
+| `utils/`               | `response.ts`, `error.ts`, `cache.ts`, `jwt.ts`, `cookie.ts`, `password-hash.ts`, `getRequestContext.ts`, `withPagination.ts`, `formatZodError.ts` |
+| `validator/`           | Shared Zod schemas: `pagination.ts`, `params.ts`                                                                                                   |
+| `lib/logger.ts`        | Winston logger (file transports in `logs/`)                                                                                                        |
+| `scripts/`             | `generate-domain.js`, `seed.ts`                                                                                                                    |
 
 **Path aliases** (tsconfig): `@/*` → `src/*`, plus `@domains/*`, `@middlewares/*`, `@utils/*`, `@db/*`.
 
@@ -50,10 +50,12 @@ Scaffold new domains with `pnpm create:domain <name>` — generates `api.ts`/`se
 **Standard handler chain:** `auth` → `validate({ body, params, query })` → `projectAccess("Project" | "Task")` → handler.
 
 **Response envelope** — always use `ApiResponse` (`src/utils/response.ts`), never raw `res.json`:
+
 ```ts
 ApiResponse.success(res, "message", data, StatusCodes.OK, pagination?)
 ApiResponse.error(res, "message", StatusCodes.NOT_FOUND, "ERROR_TYPE", err?)
 ```
+
 Shape: `{ success, statusCode, message, data, pagination? }`. Errors add `error.reference` (a generated ID) plus stack/context **only in development**.
 
 **Errors** — throw with `throwError(msg, statusCode, type?)` (`src/utils/error.ts` → `AppError`). Caught by `errorHandler` + `entityParseHandler` (`src/middlewares/global-error-handler.ts`), which also maps Postgres `23505` unique-violations.
@@ -73,15 +75,15 @@ Shape: `{ success, statusCode, message, data, pagination? }`. Errors add `error.
 
 ## Data model (`src/db/`)
 
-| Table | Notes |
-| --- | --- |
-| `usersTable` | `email` unique; `provider` (`credential` default / `google`); `password_hash`, `avatar`, `isActive`; soft-delete `deletedAt` |
-| `projectsTable` | FK `owner_id`; `status` enum `active`/`archived`; unique `(owner_id, name)` |
-| `projectMembersTable` | FK `project_id`, `user_id`; `role` enum `admin`/`member`/`viewer`; unique `(project_id, user_id)` |
-| `tasksTable` | `status` `pending`/`in_progress`/`completed`, `priority` `low`/`medium`/`high`/`urgent`; FKs `project_id`, `created_by`; `start_date`/`due_date` |
-| `taskMembersTable` | Task assignees (FK `task_id`, `user_id`) |
-| `taskActivityLogTable` | `action` enum `created`/`updated`/`deleted`; `old_values`/`new_values` JSONB |
-| `authsTable` | Legacy/minimal (`id`, `name`) — appears unused |
+| Table                  | Notes                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `usersTable`           | `email` unique; `provider` (`credential` default / `google`); `password_hash`, `avatar`, `isActive`; soft-delete `deletedAt`                     |
+| `projectsTable`        | FK `owner_id`; `status` enum `active`/`archived`; unique `(owner_id, name)`                                                                      |
+| `projectMembersTable`  | FK `project_id`, `user_id`; `role` enum `admin`/`member`/`viewer`; unique `(project_id, user_id)`                                                |
+| `tasksTable`           | `status` `pending`/`in_progress`/`completed`, `priority` `low`/`medium`/`high`/`urgent`; FKs `project_id`, `created_by`; `start_date`/`due_date` |
+| `taskMembersTable`     | Task assignees (FK `task_id`, `user_id`)                                                                                                         |
+| `taskActivityLogTable` | `action` enum `created`/`updated`/`deleted`; `old_values`/`new_values` JSONB                                                                     |
+| `authsTable`           | Legacy/minimal (`id`, `name`) — appears unused                                                                                                   |
 
 FKs cascade on delete (activity-log `user_id` sets null).
 

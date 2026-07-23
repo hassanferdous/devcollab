@@ -1,12 +1,19 @@
 import db from "@/config/db";
-import { taskActivityLogTable, taskMembersTable, tasksTable } from "@/db/task.schema";
+import {
+	taskActivityLogTable,
+	taskMembersTable,
+	tasksTable
+} from "@/db/task.schema";
 import { usersTable } from "@/db/user.schema";
-import { PaginatedData } from "@/types";
+import { Paginated } from "@/types";
 import { throwError } from "@/utils/error";
-import { withPaginationOptions } from "@/utils/withPaginationOptions";
 import {
 	and,
+	asc,
+	desc,
 	eq,
+	inArray,
+	SQL,
 	sql,
 	type InferInsertModel,
 	type InferSelectModel
@@ -14,6 +21,8 @@ import {
 import { StatusCodes } from "http-status-codes";
 import defineAbilityFor, { MemberAbilityContext } from "../project/ability";
 import { Namespace } from "socket.io";
+import { TaskFilterSchema } from "./validation";
+import { OrderByColumn, withPagination } from "@/utils/withPagination";
 
 export type TaskAssignee = {
 	user_id: number;
@@ -96,18 +105,61 @@ export const TaskServices = {
 	 */
 	getAll: async (
 		projectId: number,
-		{ page, limit }: { page?: number; limit?: number }
-	): Promise<PaginatedData<Task>> => {
+		{
+			page,
+			limit,
+			assignee_ids,
+			priority,
+			status,
+			sort = "created_at",
+			order = "desc"
+		}: TaskFilterSchema
+	): Promise<Paginated<Task>> => {
+		const filters: SQL[] = [eq(tasksTable.project_id, projectId)];
+		if (priority) {
+			filters.push(eq(tasksTable.priority, priority));
+		}
+		if (status) {
+			filters.push(eq(tasksTable.status, status));
+		}
+		if (assignee_ids?.length) {
+			// Constrain to tasks that have any of the requested assignees.
+			// A subquery (not a join) keeps one row per task and avoids
+			// dropping unassigned tasks / duplicating multi-assignee tasks.
+			filters.push(
+				inArray(
+					tasksTable.id,
+					db
+						.select({ id: taskMembersTable.task_id })
+						.from(taskMembersTable)
+						.where(inArray(taskMembersTable.user_id, assignee_ids))
+				)
+			);
+		}
+
+		const orderBy: OrderByColumn[] = [
+			order === "asc"
+				? asc(tasksTable[sort as keyof Task])
+				: desc(tasksTable[sort as keyof Task])
+		];
+
 		const query = db
 			.select({ record: tasksTable, count: sql<number>`count(*) over()` })
 			.from(tasksTable)
-			.where(eq(tasksTable.project_id, projectId));
-		const dynamicQuery = query.$dynamic();
-		const data = (await withPaginationOptions(
-			dynamicQuery,
+			.where(and(...filters))
+			.$dynamic();
+
+		if (!page && !limit) {
+			const data = await query.orderBy(...orderBy);
+			return {
+				data: data.map(({ record }) => record)
+			};
+		}
+		const data = (await withPagination(query, {
 			page,
-			limit
-		)) as PaginatedData<Task>;
+			limit,
+			orderByColumn: orderBy
+		})) as Paginated<Task>;
 		return data;
 	},
 

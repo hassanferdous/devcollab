@@ -13,10 +13,11 @@ import {
 	createTaskSchema,
 	projectIdAndTaskIdSchema,
 	projectIdSchema,
+	TaskFilterSchema,
+	taskFilterSchema,
 	updateTaskSchema
 } from "./validation";
 import { Namespace } from "socket.io";
-import { paginationSchema } from "@/validator/pagination";
 import redisClient from "@/config/redis";
 import { getOrSet } from "@/utils/cache";
 
@@ -163,7 +164,11 @@ router.post(
  * /api/v1/projects/{projectId}/tasks:
  *   get:
  *     summary: Retrieve all task records for a project
- *     description: Returns a list of tasks associated with the project. Access restricted to project members.
+ *     description: >
+ *       Returns a paginated list of tasks for the project, with optional
+ *       filtering by status, priority and assignee, plus sorting. Access
+ *       restricted to project members. Omit `page` and `limit` to return the
+ *       full (unpaginated) list.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -175,6 +180,60 @@ router.post(
  *         schema:
  *           type: integer
  *         description: Unique identifier of the project
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Page number (1-based). Omit together with `limit` for the full list.
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Page size.
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [pending, in_progress, completed]
+ *         description: Filter by task status.
+ *       - in: query
+ *         name: priority
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [low, medium, high, urgent]
+ *         description: Filter by task priority.
+ *       - in: query
+ *         name: assignee_ids
+ *         required: false
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         style: form
+ *         explode: true
+ *         description: Return only tasks assigned to any of these user IDs.
+ *       - in: query
+ *         name: sort
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [created_at, updated_at, due_date]
+ *           default: created_at
+ *         description: Field to sort by.
+ *       - in: query
+ *         name: order
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort direction.
  *     responses:
  *       200:
  *         description: Successfully fetched all tasks
@@ -196,6 +255,33 @@ router.post(
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Task'
+ *                 pagination:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 42
+ *                     currentPage:
+ *                       type: integer
+ *                       example: 1
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 3
+ *                     hasNext:
+ *                       type: boolean
+ *                       example: true
+ *                     hasPrev:
+ *                       type: boolean
+ *                       example: false
+ *                     prevPage:
+ *                       type: integer
+ *                       nullable: true
+ *                       example: null
+ *                     nextPage:
+ *                       type: integer
+ *                       nullable: true
+ *                       example: 2
  *       401:
  *         description: Unauthorized
  *       403:
@@ -204,22 +290,26 @@ router.post(
 router.get(
 	"/",
 	auth,
-	validate({ params: projectIdSchema, query: paginationSchema }),
+	validate({ params: projectIdSchema, query: taskFilterSchema }),
 	projectAccess("Task"),
 	async (req: Request, res: Response) => {
 		const projectId = +req.params.projectId;
-		const queryParams = req.query as unknown as {
-			limit?: number;
-			page?: number;
-		};
+		const queryParams = req.query as unknown as TaskFilterSchema;
 
 		const version =
 			(await redisClient.get(`tasks:${projectId}:version`)) || 1;
-		const cacheKey = `tasks:${projectId}:v:${version}:${JSON.stringify(queryParams)}`;
+		const cacheKey = `tasks:${projectId}:v:${version}:${JSON.stringify(
+			queryParams
+		)}`;
 		const data = await getOrSet(cacheKey, 60, () =>
 			TaskServices.getAll(projectId, {
 				limit: queryParams.limit,
-				page: queryParams.page
+				page: queryParams.page,
+				assignee_ids: queryParams.assignee_ids,
+				priority: queryParams.priority,
+				status: queryParams.status,
+				sort: queryParams.sort,
+				order: queryParams.order
 			})
 		);
 

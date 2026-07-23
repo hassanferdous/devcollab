@@ -1,3 +1,4 @@
+import { paginationSchema } from "@/validator/pagination";
 import { z } from "zod";
 
 export const createTaskSchema = z.object({
@@ -10,7 +11,9 @@ export const assignTaskSchema = z.object({
 });
 
 export const addAssigneesSchema = z.object({
-	user_ids: z.array(z.coerce.number().int().positive()).min(1, "At least one user is required")
+	user_ids: z
+		.array(z.coerce.number().int().positive())
+		.min(1, "At least one user is required")
 });
 
 export const updateTaskSchema = createTaskSchema.partial();
@@ -29,3 +32,16 @@ export const assigneeParamsSchema = z.object({
 	id: z.coerce.number("Task ID is required").int().positive(),
 	userId: z.coerce.number("User ID is required").int().positive()
 });
+
+export const taskFilterSchema = paginationSchema.extend({
+	status: z.enum(["pending", "in_progress", "completed"]).optional(),
+	priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+	assignee_ids: z.array(z.coerce.number().int().positive()).optional(),
+	sort: z
+		.enum(["created_at", "updated_at", "due_date"])
+		.optional()
+		.default("created_at"),
+	order: z.enum(["asc", "desc"]).optional().default("desc")
+});
+
+export type TaskFilterSchema = z.infer<typeof taskFilterSchema>;
