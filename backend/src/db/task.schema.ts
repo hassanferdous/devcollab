@@ -1,4 +1,5 @@
 import {
+	index,
 	integer,
 	jsonb,
 	pgEnum,
@@ -24,26 +25,37 @@ export const taskPriorityEnum = pgEnum("task_priority", [
 	"high",
 	"urgent"
 ]);
-export const tasksTable = pgTable("tasks", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity(),
-	title: varchar({ length: 255 }).notNull(),
-	description: text(),
-	status: taskStatusEnum().default("pending").notNull(),
-	priority: taskPriorityEnum().default("low").notNull(),
-	project_id: integer()
-		.notNull()
-		.references(() => projectsTable.id, {
-			onDelete: "cascade"
-		}),
-	created_by: integer()
-		.notNull()
-		.references(() => usersTable.id, {
-			onDelete: "cascade"
-		}),
-	start_date: timestamp(),
-	due_date: timestamp(),
-	...timestamps
-});
+export const tasksTable = pgTable(
+	"tasks",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		title: varchar({ length: 255 }).notNull(),
+		description: text(),
+		status: taskStatusEnum().default("pending").notNull(),
+		priority: taskPriorityEnum().default("low").notNull(),
+		project_id: integer()
+			.notNull()
+			.references(() => projectsTable.id, {
+				onDelete: "cascade"
+			}),
+		created_by: integer()
+			.notNull()
+			.references(() => usersTable.id, {
+				onDelete: "cascade"
+			}),
+		start_date: timestamp(),
+		due_date: timestamp(),
+		...timestamps
+	},
+	(table) => [
+		index("idx_tasks_project_id_created_at").on(
+			table.project_id,
+			table.created_at
+		),
+		index("idx_tasks_project_id_status").on(table.project_id, table.status),
+		index("idx_tasks_created_by").on(table.created_by)
+	]
+);
 
 export const taskMembersTable = pgTable(
 	"task_members",
@@ -61,7 +73,10 @@ export const taskMembersTable = pgTable(
 			}),
 		assigned_at: timestamp().defaultNow()
 	},
-	(table) => [unique().on(table.task_id, table.user_id)]
+	(table) => [
+		unique().on(table.task_id, table.user_id),
+		index("idx_task_members_user_id").on(table.user_id)
+	]
 );
 
 export const taskActivityActionTypeEnum = pgEnum("task_activity_action_type", [
@@ -69,18 +84,25 @@ export const taskActivityActionTypeEnum = pgEnum("task_activity_action_type", [
 	"updated",
 	"deleted"
 ]);
-export const taskActivityLogTable = pgTable("task_activity_log", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity(),
-	task_id: integer()
-		.notNull()
-		.references(() => tasksTable.id, {
-			onDelete: "cascade"
+export const taskActivityLogTable = pgTable(
+	"task_activity_log",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		task_id: integer()
+			.notNull()
+			.references(() => tasksTable.id, {
+				onDelete: "cascade"
+			}),
+		user_id: integer().references(() => usersTable.id, {
+			onDelete: "set null"
 		}),
-	user_id: integer().references(() => usersTable.id, {
-		onDelete: "set null"
-	}),
-	action: taskActivityActionTypeEnum().notNull(),
-	old_values: jsonb(),
-	new_values: jsonb(),
-	...timestamps
-});
+		action: taskActivityActionTypeEnum().notNull(),
+		old_values: jsonb(),
+		new_values: jsonb(),
+		...timestamps
+	},
+	(table) => [
+		index("idx_task_activity_task_id").on(table.task_id),
+		index("idx_task_activity_user_id").on(table.user_id)
+	]
+);

@@ -1,4 +1,5 @@
 import {
+	index,
 	integer,
 	pgTable,
 	timestamp,
@@ -56,5 +57,8 @@ export const projectMembersTable = pgTable(
 		role: projectRolesEnum().notNull().default("member"),
 		joined_at: timestamp().defaultNow()
 	},
-	(table) => [unique().on(table.project_id, table.user_id)]
+	(table) => [
+		unique().on(table.project_id, table.user_id),
+		index("idx_project_members_user_id").on(table.user_id)
+	]
 );
