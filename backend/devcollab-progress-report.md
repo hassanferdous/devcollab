@@ -2,7 +2,7 @@
 
 _Updated 2026-07-24 (originally 2026-07-13). Measured against `devcollab-weekly-guide.md` (6-week roadmap)._
 
-> **Since the last report (07-22 → 07-24):** **task filtering/sorting** shipped — `GET /projects/:projectId/tasks` now accepts `status`, `priority`, `assignee_ids`, `sort`, and `order`, applied as a single dynamic filtered/sorted/paginated query in `TaskServices.getAll`. **DB indexes** on the filter columns are still outstanding.
+> **Since the last report (07-22 → 07-24):** **task filtering/sorting** shipped — `GET /projects/:projectId/tasks` now accepts `status`, `priority`, `assignee_ids`, `sort`, and `order`, applied as a single dynamic filtered/sorted/paginated query in `TaskServices.getAll`. **DB indexes** on FK/filter columns then landed (07-24) — 7 Drizzle indexes across `tasks`, `task_members`, `task_activity_log`, and `project_members`, applied via `drizzle-kit push`. This also folded in a round of **schema-correctness fixes** (see §2). Week 2's only remaining gap is file attachments; **RabbitMQ (Week 5) is the critical path.**
 
 > **Prior report (07-13 → 07-22):** only **rate limiting** shipped (commit `e63d6b1`) — Day 1 of that week's plan. Days 2–6 (filtering/sorting, indexes, RabbitMQ) did **not** land; remaining commits were chores (workspace cleanup, `.gitignore`).
 
@@ -15,7 +15,7 @@ _Updated 2026-07-24 (originally 2026-07-13). Measured against `devcollab-weekly-
 | Week | Theme                                         | Status         | %     |
 | ---- | --------------------------------------------- | -------------- | ----- |
 | 1    | Setup & Authentication                        | ✅ Complete    | ~100% |
-| 2    | Projects & Tasks (CRUD + RBAC + transactions) | 🟡 Mostly done | ~80%  |
+| 2    | Projects & Tasks (CRUD + RBAC + transactions) | 🟡 Mostly done | ~85%  |
 | 3    | Real-time (Socket.io)                         | 🟡 Mostly done | ~75%  |
 | 4    | Redis & Caching (+ rate limiting)             | 🟡 Mostly done | ~90%  |
 | 5    | Message Broker (RabbitMQ)                     | 🔴 Not started | 0%    |
@@ -40,6 +40,8 @@ After a June 18 → July 22 pause, feature work resumed with **rate limiting** (
 - **Transactions + activity log:** task create/update/delete each wrap in `db.transaction` and write `task_activity_log` atomically. Project service also transactional.
 - Pagination (`withPagination`, `paginationSchema`).
 - **Task filtering + sorting (07-24):** `GET /projects/:projectId/tasks` accepts `status`, `priority`, `assignee_ids`, `sort` (`created_at`/`updated_at`/`due_date`), `order` (`asc`/`desc`). `TaskServices.getAll` builds a dynamic `and(...)` filter + `orderBy` in one filtered/sorted/paginated query (`count(*) over()` for totals); `assignee_ids` filters via a subquery on `task_members` (no join → no dropped/duplicated tasks). Swagger query params documented. Composes with the version-keyed cache (key already hashes query params).
+- **DB indexes (07-24):** 7 Drizzle indexes added and migrated (`drizzle-kit push`) — `tasks(project_id, created_at)` (default list + sort), `tasks(project_id, status)`, `tasks(created_by)`, `task_members(user_id)`, `task_activity_log(task_id)`, `task_activity_log(user_id)`, `project_members(user_id)`. Each targets a real query path (Postgres does not auto-index FKs); the `user_id` indexes cover lookups the composite uniques can't (they lead with the other column). No standalone `priority` index — priority filters ride the `project_id`-leading composites.
+- **Schema-correctness fixes (07-24):** dropped the `NOT NULL`/`ON DELETE SET NULL` contradiction on `task_activity_log.user_id`; added `unique(task_id, user_id)` on `task_members` (so `addAssignees`' `onConflictDoNothing` works); made `password_hash` nullable for OAuth users (local login now rejects passwordless accounts); `description` → `text()`, `NOT NULL` on `status`/`priority`/`isActive`; centralized `created_at`/`updated_at`/`deleted_at` via a `timestamps` helper; removed the unused `auths` table.
 
 **Week 3 — Real-time (partial)**
 
@@ -66,7 +68,7 @@ After a June 18 → July 22 pause, feature work resumed with **rate limiting** (
 | Gap                                                                                     | Week | Size            |
 | --------------------------------------------------------------------------------------- | ---- | --------------- |
 | ~~Task **filtering/sorting** (`status`/`priority`/`assignee`/`sort`/`order`)~~           | 2    | ✅ Done (07-24) |
-| **DB indexes** on FK/filter columns                                                     | 2    | S               |
+| ~~**DB indexes** on FK/filter columns~~                                                 | 2    | ✅ Done (07-24) |
 | **File attachments** (multer + `task_attachments`)                                      | 2    | M               |
 | **Team chat** + `messages` persistence (`message:send`/`message:new`, history endpoint) | 3    | M               |
 | ~~**Rate limiting** on auth endpoints (Redis-backed)~~                                  | 4    | ✅ Done (07-22) |
@@ -82,14 +84,11 @@ _Aside:_ frontend `.env` targets `:8000`, but backend runs `APP_PORT=8001` with 
 
 **Approach: hybrid** — close the last fast Week 2 gap (Day 1), then commit the rest of the week to Week 5 (RabbitMQ), which is the critical path. Conventions: TypeScript ESM, Drizzle, ioredis, Zod, `@/…` aliases, pnpm.
 
-> Rate limiting (last week's Day 1) is **done** — see §2. This plan picks up at what was Day 2.
+> Rate limiting, task filtering/sorting, **and DB indexes** are all **done** — see §2. Week 2 is closed except for file attachments (deferred). This plan is now **fully Week 5 (RabbitMQ)**, the critical path.
 
-### Day 1 — DB indexes _(Week 2)_
+### ✅ Day 1 — DB indexes _(Week 2)_ — **DONE (07-24)**
 
-> Task filtering/sorting is **done** (07-24) — `taskFilterSchema` wired into `GET /`, `TaskServices.getAll` builds a dynamic `and(...)` + `orderBy` in one query, `assignee_ids` via a `task_members` subquery, Swagger documented. Cache composes (key hashes query params). Indexes remain.
-
-- Add Drizzle indexes in `task.schema.ts` (`tasks`: project_id, status, priority; `task_members`: user_id); `drizzle-kit generate` + migrate.
-- ✔ Filtered/sorted/paginated query returns correct data; MISS→HIT in logs.
+> 7 Drizzle indexes added and migrated via `drizzle-kit push` (`tasks` ×3, `task_members`, `task_activity_log` ×2, `project_members`). A round of schema-correctness fixes landed alongside. Details in §2.
 
 ### Day 2 — RabbitMQ connection _(Week 5)_
 
