@@ -186,6 +186,7 @@ export const ProjectServices = {
 				status: projectsTable.status,
 				created_at: projectsTable.created_at,
 				updated_at: projectsTable.updated_at,
+				deleted_at: projectsTable.deleted_at,
 				role: projectMembersTable.role // Will be null if left join fails to match
 			})
 			.from(projectsTable)

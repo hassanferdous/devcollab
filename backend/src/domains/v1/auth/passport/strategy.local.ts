@@ -12,6 +12,11 @@ passport.use(
 			if (!user) {
 				return cb(null, false, { message: "Incorrect email or password." });
 			}
+			// OAuth-only users (e.g. Google) have no password_hash and must not
+			// be able to authenticate via the local (password) strategy.
+			if (!user.password_hash) {
+				return cb(null, false, { message: "Incorrect email or password." });
+			}
 			const isMatched = await bcrypt.compare(password, user.password_hash);
 			if (!isMatched) {
 				return cb({ message: "Incorrect email or password." }, false, {

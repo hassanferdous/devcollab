@@ -7,6 +7,7 @@ import {
 	unique
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./user.schema";
+import { timestamps } from "./column.helpers";
 
 export const projectStatusEnum = pgEnum("project_status", [
 	"active",
@@ -25,8 +26,7 @@ export const projectsTable = pgTable(
 		name: varchar({ length: 255 }).notNull(),
 		description: varchar({ length: 255 }),
 		status: projectStatusEnum().default("active"),
-		created_at: timestamp().defaultNow(),
-		updated_at: timestamp().defaultNow()
+		...timestamps
 	},
 	(table) => [unique().on(table.owner_id, table.name)]
 );

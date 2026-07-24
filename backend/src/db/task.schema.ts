@@ -1,11 +1,14 @@
 import {
 	integer,
-	pgTable,
-	varchar,
-	pgEnum,
 	jsonb,
-	timestamp
+	pgEnum,
+	pgTable,
+	text,
+	timestamp,
+	unique,
+	varchar
 } from "drizzle-orm/pg-core";
+import { timestamps } from "./column.helpers";
 import { projectsTable } from "./project.schema";
 import { usersTable } from "./user.schema";
 
@@ -24,9 +27,9 @@ export const taskPriorityEnum = pgEnum("task_priority", [
 export const tasksTable = pgTable("tasks", {
 	id: integer().primaryKey().generatedAlwaysAsIdentity(),
 	title: varchar({ length: 255 }).notNull(),
-	description: varchar({ length: 255 }),
-	status: taskStatusEnum().default("pending"),
-	priority: taskPriorityEnum().default("low"),
+	description: text(),
+	status: taskStatusEnum().default("pending").notNull(),
+	priority: taskPriorityEnum().default("low").notNull(),
 	project_id: integer()
 		.notNull()
 		.references(() => projectsTable.id, {
@@ -39,24 +42,27 @@ export const tasksTable = pgTable("tasks", {
 		}),
 	start_date: timestamp(),
 	due_date: timestamp(),
-	created_at: timestamp().defaultNow(),
-	updated_at: timestamp().defaultNow()
+	...timestamps
 });
 
-export const taskMembersTable = pgTable("task_members", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity(),
-	task_id: integer()
-		.notNull()
-		.references(() => tasksTable.id, {
-			onDelete: "cascade"
-		}),
-	user_id: integer()
-		.notNull()
-		.references(() => usersTable.id, {
-			onDelete: "cascade"
-		}),
-	assigned_at: timestamp().defaultNow()
-});
+export const taskMembersTable = pgTable(
+	"task_members",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		task_id: integer()
+			.notNull()
+			.references(() => tasksTable.id, {
+				onDelete: "cascade"
+			}),
+		user_id: integer()
+			.notNull()
+			.references(() => usersTable.id, {
+				onDelete: "cascade"
+			}),
+		assigned_at: timestamp().defaultNow()
+	},
+	(table) => [unique().on(table.task_id, table.user_id)]
+);
 
 export const taskActivityActionTypeEnum = pgEnum("task_activity_action_type", [
 	"created",
@@ -70,13 +76,11 @@ export const taskActivityLogTable = pgTable("task_activity_log", {
 		.references(() => tasksTable.id, {
 			onDelete: "cascade"
 		}),
-	user_id: integer()
-		.notNull()
-		.references(() => usersTable.id, {
-			onDelete: "set null"
-		}),
+	user_id: integer().references(() => usersTable.id, {
+		onDelete: "set null"
+	}),
 	action: taskActivityActionTypeEnum().notNull(),
 	old_values: jsonb(),
 	new_values: jsonb(),
-	created_at: timestamp().defaultNow()
+	...timestamps
 });

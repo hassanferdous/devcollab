@@ -41,10 +41,10 @@ const router = express.Router();
  *         isActive:
  *           type: boolean
  *           example: true
- *         createdAt:
+ *         created_at:
  *           type: string
  *           format: date-time
- *         updatedAt:
+ *         updated_at:
  *           type: string
  *           format: date-time
  */
