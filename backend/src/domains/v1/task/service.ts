@@ -92,7 +92,7 @@ export const TaskServices = {
 			.select()
 			.from(tasksTable)
 			.where(
-				eq(tasksTable.id, taskId) && eq(tasksTable.project_id, projectId)
+				and(eq(tasksTable.id, taskId), eq(tasksTable.project_id, projectId))
 			);
 		if (!result) throwError("Task not found", StatusCodes.NOT_FOUND);
 		return result[0];
@@ -258,31 +258,25 @@ export const TaskServices = {
 		context: MemberAbilityContext,
 		nsp: Namespace
 	): Promise<Task> => {
-		await TaskServices.getById({ taskId, projectId });
+		const oldTask = await TaskServices.getById({ taskId, projectId });
 		const ability = defineAbilityFor(context);
 		if (!ability.can("delete", "Task"))
 			throwError("Unauthorized", StatusCodes.UNAUTHORIZED);
 
 		const result = await db.transaction(async (tx) => {
+			// Log the deletion while the task still exists (satisfies the FK).
+			// Deleting the task then nulls this row's task_id via ON DELETE SET NULL,
+			// so the audit entry survives with the full snapshot in old_values.
+			await tx.insert(taskActivityLogTable).values({
+				task_id: taskId,
+				user_id: oldTask.created_by,
+				action: "deleted",
+				old_values: oldTask
+			});
 			const [deleted] = await tx
 				.delete(tasksTable)
 				.where(eq(tasksTable.id, taskId))
 				.returning();
-			await tx.insert(taskActivityLogTable).values({
-				task_id: deleted.id,
-				user_id: deleted.created_by,
-				action: "deleted",
-				old_values: {
-					title: deleted.title,
-					description: deleted.description,
-					status: deleted.status,
-					priority: deleted.priority,
-					project_id: deleted.project_id,
-					created_by: deleted.created_by,
-					start_date: deleted.start_date,
-					due_date: deleted.due_date
-				}
-			});
 			nsp.to(`project:${deleted.project_id}`).emit("task:deleted", deleted);
 			return deleted;
 		});

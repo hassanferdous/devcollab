@@ -1,11 +1,6 @@
 import { yupResolver } from "@hookform/resolvers/yup";
 import { format } from "date-fns";
-import {
-	CalendarIcon,
-	Loader2,
-	Paperclip,
-	X,
-} from "lucide-react";
+import { CalendarIcon, Loader2, Paperclip, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as yup from "yup";
@@ -37,14 +32,17 @@ import { cn } from "~/lib/utils";
 import type { Task, TaskPriority } from "~/types";
 
 const schema = yup.object({
-	title: yup.string().min(2, "Title is too short").required("Title is required"),
+	title: yup
+		.string()
+		.min(2, "Title is too short")
+		.required("Title is required"),
 	description: yup.string().default(""),
 	priority: yup
 		.mixed<TaskPriority>()
 		.oneOf(["low", "medium", "high", "urgent"])
 		.default("low"),
-	start_date: yup.string(),
-	due_date: yup.string(),
+	start_date: yup.string().nullable(),
+	due_date: yup.string().nullable(),
 });
 
 type TaskFormValues = yup.InferType<typeof schema>;
@@ -117,8 +115,8 @@ export function TaskForm({
 			title: defaultValues?.title ?? "",
 			description: defaultValues?.description ?? "",
 			priority: defaultValues?.priority ?? "low",
-			start_date: defaultValues?.start_date?.slice(0, 10) ?? "",
-			due_date: defaultValues?.due_date?.slice(0, 10) ?? "",
+			start_date: defaultValues?.start_date?.slice(0, 10) ?? null,
+			due_date: defaultValues?.due_date?.slice(0, 10) ?? null,
 		},
 	});
 
@@ -152,7 +150,10 @@ export function TaskForm({
 						<FormItem>
 							<FormLabel>Title</FormLabel>
 							<FormControl>
-								<Input placeholder="What needs to be done?" {...field} />
+								<Input
+									placeholder="What needs to be done?"
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -261,7 +262,9 @@ export function TaskForm({
 										(optional)
 									</span>
 								</FormLabel>
-								<Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+								<Popover
+									open={dueDateOpen}
+									onOpenChange={setDueDateOpen}>
 									<PopoverTrigger asChild>
 										<FormControl>
 											<Button
@@ -277,21 +280,17 @@ export function TaskForm({
 											</Button>
 										</FormControl>
 									</PopoverTrigger>
-									<PopoverContent
-										className="w-auto p-0"
-										align="start">
+									<PopoverContent className="w-auto p-0" align="start">
 										<Calendar
 											mode="single"
 											selected={dateValue}
 											onSelect={(date) => {
 												field.onChange(
-													date
-														? format(date, "yyyy-MM-dd")
-														: "",
+													date ? format(date, "yyyy-MM-dd") : "",
 												);
 												setDueDateOpen(false);
 											}}
-											/>
+										/>
 										{dateValue && (
 											<div className="border-t px-3 pb-3 pt-2">
 												<Button
@@ -318,7 +317,9 @@ export function TaskForm({
 				<div className="space-y-2">
 					<p className="text-sm font-medium leading-none">
 						Attachments{" "}
-						<span className="font-normal text-muted-foreground">(optional)</span>
+						<span className="font-normal text-muted-foreground">
+							(optional)
+						</span>
 					</p>
 
 					{attachments.length > 0 && (

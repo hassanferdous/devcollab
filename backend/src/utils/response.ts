@@ -115,17 +115,17 @@ export const ApiResponse = {
 	): Response {
 		const reference = generateReference();
 
+		const sanitizedErrMessage = (
+			IS_DEV ? (err instanceof Error ? err.message : message) : message
+		).replace(/\\/g, " ");
+
 		// Always log full error server-side
 		console.error(`[${reference}]`, err);
 
 		const payload: ErrorPayload = {
 			success: false,
 			statusCode,
-			message: IS_DEV
-				? err instanceof Error
-					? err.message
-					: message
-				: message,
+			message: sanitizedErrMessage,
 			data: null,
 			error: {
 				type: errorType,
@@ -134,7 +134,7 @@ export const ApiResponse = {
 				// Dev-only fields
 				...(IS_DEV && err instanceof Error
 					? {
-							details: err.message,
+							details: sanitizedErrMessage,
 							stack: err.stack?.split("\n").map((l) => l.trim()),
 							context: buildContext(res)
 						}

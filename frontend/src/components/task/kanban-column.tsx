@@ -15,9 +15,9 @@ import {
 } from "~/components/ui/dialog";
 import { TaskCard } from "./task-card";
 import { TaskForm } from "./task-form";
-import type { ProjectMember, Task, TaskStatus } from "~/types";
+import type { Task, TaskStatus } from "~/types";
 import { cn } from "~/lib/utils";
-import { Can, useAbility } from "@casl/react";
+import { Can } from "@casl/react";
 import { useProjectContext } from "../providers/project-slug-provider";
 
 const columnConfig: Record<TaskStatus, { title: string; dot: string }> = {
@@ -57,8 +57,8 @@ export function KanbanColumn({
 
 	const { setNodeRef, isOver } = useDroppable({ id: status });
 
-	const handleCreateTask = (data: { title: string; description?: string }) => {
-		onCreateTask({ title: data.title, description: data.description ?? "" });
+	const handleCreateTask = (data: { title: string; description: string }) => {
+		onCreateTask(data);
 		setCreateOpen(false);
 	};
 

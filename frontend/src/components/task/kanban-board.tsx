@@ -21,13 +21,7 @@ import {
 	useUpdateTask,
 } from "~/queries/use-tasks";
 import { useProjectSocket } from "~/hooks/use-project-socket";
-import type {
-	MemberRole,
-	ProjectMember,
-	Task,
-	TaskStatus,
-	UpdateTaskFormData,
-} from "~/types";
+import type { Task, TaskStatus, UpdateTaskFormData } from "~/types";
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { TaskDetail } from "./task-detail";
@@ -153,8 +147,8 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
 		(data: { title: string; description: string }) => {
 			createTask(data, {
 				onSuccess: (res) => {
-					const newTask: Task = { ...res.data.data, status };
-					setTasks((prev) => [...prev, newTask]);
+					// const newTask: Task = { ...res.data.data, status };
+					// setTasks((prev) => [...prev, newTask]);
 					toast.success("Task created");
 				},
 				onError: () => toast.error("Failed to create task"),

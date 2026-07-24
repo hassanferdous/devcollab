@@ -12,7 +12,13 @@ export const errorHandler = (
 	_next: NextFunction
 ) => {
 	if (err instanceof AppError) {
-		return ApiResponse.error(res, err.message, err.statusCode, err.errorType, err);
+		return ApiResponse.error(
+			res,
+			err.message,
+			err.statusCode,
+			err.errorType,
+			err
+		);
 	}
 
 	// Check for PostgreSQL unique constraint violation

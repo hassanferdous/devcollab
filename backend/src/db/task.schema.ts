@@ -88,11 +88,9 @@ export const taskActivityLogTable = pgTable(
 	"task_activity_log",
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
-		task_id: integer()
-			.notNull()
-			.references(() => tasksTable.id, {
-				onDelete: "cascade"
-			}),
+		task_id: integer().references(() => tasksTable.id, {
+			onDelete: "set null"
+		}),
 		user_id: integer().references(() => usersTable.id, {
 			onDelete: "set null"
 		}),
