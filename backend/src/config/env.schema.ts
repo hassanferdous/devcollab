@@ -33,7 +33,11 @@ export const envSchema = z.object({
 	GOOGLE_CLIENT_ID: z.string(),
 	GOOGLE_CLIENT_SECRET: z.string(),
 	REDIS_PORT: z.coerce.number(),
-	REDIS_HOST: z.string()
+	REDIS_HOST: z.string(),
+	RABBITMQ_DEFAULT_USER: z.string(),
+	RABBITMQ_DEFAULT_PASS: z.string(),
+	RABBITMQ_PORT: z.coerce.number(),
+	RABBITMQ_HOST: z.string()
 });
 
 const _env = envSchema.safeParse(process.env);

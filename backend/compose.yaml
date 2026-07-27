@@ -7,6 +7,8 @@ services:
       target: ${NODE_ENV:-development}
     depends_on:
       - postgresql
+      - redis
+      - rabbitmq
     environment:
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
@@ -14,7 +16,7 @@ services:
       - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-
+  # PostgreSQL database container
   postgresql:
     image: postgres:15-alpine
     container_name: db
@@ -26,7 +28,7 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - postgresql-data:/var/lib/postgresql/data
-
+  # Redis container for caching and rate limiting
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -37,7 +39,21 @@ services:
       - REDIS_PORT=${REDIS_PORT}
     volumes:
       - redis-data:/data
-
+  # RabbitMQ message broker
+  rabbitmq:
+    image: rabbitmq:4.3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "${RABBITMQ_PORT}:5672" # AMQP protocol (app connects here)
+      - "15672:15672" # management UI (http://localhost:15672)
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
 volumes:
   postgresql-data:
   redis-data:
+  rabbitmq-data:

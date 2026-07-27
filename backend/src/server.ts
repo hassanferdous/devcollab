@@ -16,6 +16,7 @@ import passport from "passport";
 import { initSocketIO } from "./socket/io";
 import cors from "cors";
 import { apiLimiter } from "./middlewares/rate-limiter";
+import { RabbitMQService } from "./config/rabbitmq";
 
 const app = express();
 
@@ -40,6 +41,12 @@ app.use(
  */
 const { server, io } = initSocketIO(app);
 app.set("io", io);
+
+/**
+ * SPIN UP RABBITMQ CONNECTION
+ */
+RabbitMQService.connect();
+
 /*
  * Register Passport
  */

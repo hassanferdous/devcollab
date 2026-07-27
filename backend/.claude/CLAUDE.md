@@ -1,6 +1,6 @@
 # DevCollab — Backend
 
-Real-time collaborative project/task manager. **TypeScript (ESM), Express 5, PostgreSQL + Drizzle ORM, Redis (ioredis), Socket.io, Passport (local + Google OAuth), Zod, CASL.** Package manager: **pnpm**. Entry point: `src/server.ts`.
+Real-time collaborative project/task manager. **TypeScript (ESM), Express 5, PostgreSQL + Drizzle ORM, Redis (ioredis), RabbitMQ (amqplib), Socket.io, Passport (local + Google OAuth), Zod, CASL.** Package manager: **pnpm**. Entry point: `src/server.ts`.
 
 ## Commands
 
@@ -14,14 +14,14 @@ Real-time collaborative project/task manager. **TypeScript (ESM), Express 5, Pos
 | `pnpm lint` / `pnpm lint:fix` | ESLint (flat config, `eslint.config.js`)                                         |
 | `pnpm exec drizzle-kit ...`   | Migrations — config `drizzle.config.ts`, schema dir `src/db`, output `./drizzle` |
 
-Docker: `compose.yaml` (+ `compose.dev.yaml` / `compose.prod.yaml`) — services `backend`, `postgresql`, `redis`.
+Docker: `compose.yaml` (+ `compose.dev.yaml` / `compose.prod.yaml`) — services `backend`, `postgresql`, `redis`, `rabbitmq` (management UI on `:15672`).
 
 ## Directory map (`src/`)
 
 | Path                   | Purpose                                                                                                                                            |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `server.ts`            | Entry: CORS → Socket.io init → passport → parsers → routes `/api/v1` → swagger → error handlers → DB connect (retry w/ backoff) → listen           |
-| `config/`              | `index.ts` (JSON+env config), `env.schema.ts` (Zod env validation), `db.ts` (Drizzle client), `redis.ts` (ioredis client), `swagger.ts`            |
+| `config/`              | `index.ts` (JSON+env config), `env.schema.ts` (Zod env validation), `db.ts` (Drizzle client), `redis.ts` (ioredis client), `rabbitmq.ts` (`RabbitMQService`), `swagger.ts` |
 | `db/`                  | Drizzle table schemas (`*.schema.ts`)                                                                                                              |
 | `domains/v1/<domain>/` | Feature domains: `auth`, `user`, `project`, `task`                                                                                                 |
 | `routes/v1.ts`         | Mounts domain routers under `/api/v1`; health/welcome routes; 404 fallback                                                                         |
@@ -103,9 +103,16 @@ Client `src/config/redis.ts`; cache-aside helper `getOrSet(key, ttl, fetchFn)` i
 - `src/socket/auth.socket.ts` — handshake auth: verifies JWT + Redis refresh token + project membership.
 - Events: `project:joined`, `user:typing` / `user:typing-stop`, `presence:updated` (deduped user list + count), `task:created` (emitted from the task service on create).
 
+## RabbitMQ
+
+- `src/config/rabbitmq.ts` — `RabbitMQService` class: a single connection + channel, both created **lazily** on first `getChannel()` and **reused**. Connects to AMQP port **5672** (via `RABBITMQ_HOST`/`RABBITMQ_PORT`).
+- On the connection/channel `close` and `error` events the corresponding field resets to `null`, so the next call reconnects transparently.
+- `publishToQueue(exchange, queue, message, options)` asserts the exchange + queue, binds them, and publishes. Defaults: exchange type `topic`, routing key `#`, both `durable: true`.
+- **All failures throw `AppError` (`RABBITMQ_ERROR`, via `throwError`)** — request-path callers bubble to the global handler; callers outside a request (background/socket) must wrap in their own try/catch.
+
 ## Config & environment
 
-`src/config/index.ts` merges `config.<NODE_ENV>.json` (app/cors/logging) with Zod-validated env from `src/config/env.schema.ts` (loads `.env` then `.env.<NODE_ENV>`, exits on invalid env). See `.env.example`. Key vars: `NODE_ENV`, `APP_PORT` (8001), `CLIENT_URL`, `POSTGRES_*`, `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET` (min 10 chars) + `*_EXPIRES_IN`, `GOOGLE_CLIENT_ID`/`SECRET`, `REDIS_HOST`/`REDIS_PORT`. DB URI (`src/config/db.ts`) uses host `postgresql` (the Docker service name). Swagger UI via `src/config/swagger.ts`.
+`src/config/index.ts` merges `config.<NODE_ENV>.json` (app/cors/logging) with Zod-validated env from `src/config/env.schema.ts` (loads `.env` then `.env.<NODE_ENV>`, exits on invalid env). See `.env.example`. Key vars: `NODE_ENV`, `APP_PORT` (8001), `CLIENT_URL`, `POSTGRES_*`, `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET` (min 10 chars) + `*_EXPIRES_IN`, `GOOGLE_CLIENT_ID`/`SECRET`, `REDIS_HOST`/`REDIS_PORT`, `RABBITMQ_HOST`/`RABBITMQ_PORT` (AMQP **5672**, not the 15672 management port) + `RABBITMQ_DEFAULT_USER`/`RABBITMQ_DEFAULT_PASS`. Both DB (`src/config/db.ts`) and RabbitMQ (`src/config/rabbitmq.ts`) connect via Docker service names (`postgresql`, `rabbitmq`). Swagger UI via `src/config/swagger.ts`.
 
 ## Gotchas
 
