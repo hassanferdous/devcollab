@@ -1,22 +1,22 @@
 /* eslint-disable no-console */
 import db from "@/config/db";
 import { config } from "@/config/index";
-import "@/config/redis";
 import "@/domains/v1/auth/passport";
 import {
 	entityParseHandler,
 	errorHandler
 } from "@/middlewares/global-error-handler";
 import { default as v1Router } from "@/routes/v1";
-import { setupSwagger } from "@/config/swagger";
+import "@/services/redis";
+import { setupSwagger } from "@/services/swagger";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import express from "express";
 import morgan from "morgan";
 import passport from "passport";
-import { initSocketIO } from "./socket/io";
-import cors from "cors";
 import { apiLimiter } from "./middlewares/rate-limiter";
-import { RabbitMQService } from "./config/rabbitmq";
+import { initSocketIO } from "./socket/io";
+import RabbitMQ from "./services/rabbitmq";
 
 const app = express();
 
@@ -45,7 +45,7 @@ app.set("io", io);
 /**
  * SPIN UP RABBITMQ CONNECTION
  */
-RabbitMQService.connect();
+RabbitMQ.bootstrap();
 
 /*
  * Register Passport

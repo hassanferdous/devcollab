@@ -1,4 +1,4 @@
-import redisClient from "@/config/redis";
+import redisClient from "@/services/redis";
 import { ProjectServices } from "@/domains/v1/project/service";
 import { User } from "@/domains/v1/user/service";
 import { CookieUtil } from "@/utils/cookie";

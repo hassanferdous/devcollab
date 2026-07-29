@@ -6,9 +6,12 @@ services:
       context: .
       target: ${NODE_ENV:-development}
     depends_on:
-      - postgresql
-      - redis
-      - rabbitmq
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
@@ -28,6 +31,12 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - postgresql-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   # Redis container for caching and rate limiting
   redis:
     image: redis:7-alpine
@@ -39,6 +48,12 @@ services:
       - REDIS_PORT=${REDIS_PORT}
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
   # RabbitMQ message broker
   rabbitmq:
     image: rabbitmq:4.3-management-alpine
@@ -53,6 +68,13 @@ services:
       - RABBITMQ_PORT=${RABBITMQ_PORT}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      # broker readiness — passes only once the AMQP listener (5672) is up
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 volumes:
   postgresql-data:
   redis-data:

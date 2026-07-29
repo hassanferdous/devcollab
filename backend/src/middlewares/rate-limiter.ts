@@ -1,4 +1,4 @@
-import redisClient from "@/config/redis";
+import redisClient from "@/services/redis";
 import { ApiResponse } from "@/utils/response";
 import { Request, Response } from "express";
 import { MINUTE, rateLimit } from "express-rate-limit";

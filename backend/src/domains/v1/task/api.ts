@@ -18,7 +18,7 @@ import {
 	updateTaskSchema
 } from "./validation";
 import { Namespace } from "socket.io";
-import redisClient from "@/config/redis";
+import redisClient from "@/services/redis";
 import { getOrSet } from "@/utils/cache";
 
 const router = express.Router({

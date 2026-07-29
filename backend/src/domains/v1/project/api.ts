@@ -14,7 +14,7 @@ import {
 	updateProjectSchema
 } from "./validation";
 import { getOrSet } from "@/utils/cache";
-import redisClient from "@/config/redis";
+import redisClient from "@/services/redis";
 
 const router = express.Router();
 

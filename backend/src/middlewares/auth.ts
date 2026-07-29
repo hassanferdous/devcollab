@@ -3,7 +3,7 @@ import JWT from "@/utils/jwt";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { JwtPayload } from "jsonwebtoken";
-import redisClient from "@/config/redis";
+import redisClient from "@/services/redis";
 import { User } from "@/domains/v1/user/service";
 
 export default async function auth(

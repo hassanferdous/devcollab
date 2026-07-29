@@ -1,4 +1,4 @@
-import redisClient from "@/config/redis";
+import redisClient from "@/services/redis";
 import logger from "@/lib/logger";
 
 export const getOrSet = async <T>(

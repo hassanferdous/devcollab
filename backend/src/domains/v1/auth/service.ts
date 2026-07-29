@@ -9,7 +9,7 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import passport from "passport";
 import { User } from "../user/service";
-import redisClient from "@/config/redis";
+import redisClient from "@/services/redis";
 import ms, { StringValue } from "ms";
 import config from "@/config";
 

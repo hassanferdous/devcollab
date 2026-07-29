@@ -1,7 +1,5 @@
-/* eslint-disable no-console */
-
 import Redis from "ioredis";
-import { envVar } from "./env.schema";
+import { envVar } from "../config/env.schema";
 import logger from "@/lib/logger";
 
 const redisClient = new Redis({
@@ -16,18 +14,19 @@ const redisClient = new Redis({
 });
 
 redisClient.on("connect", () => {
-	console.log("Redis connected on port", envVar.REDIS_PORT);
-	logger.info("Redis socket connected");
+	logger.info("✅ Redis socket connected");
 });
 
 redisClient.on("ready", () => {
-	console.log("Redis ready for commands on port", envVar.REDIS_PORT);
 	logger.info("✅ Redis ready for commands");
 });
 
 redisClient.on("error", (err) => {
-	console.log("Redis error on port", envVar.REDIS_PORT);
-	logger.error(err.message);
+	logger.error("❌ Redis error:", err.message);
+});
+
+redisClient.on("reconnect", () => {
+	logger.info("✅ Redis socket reconnected");
 });
 
 export default redisClient;
