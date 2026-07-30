@@ -18,7 +18,7 @@ import { apiLimiter } from "./middlewares/rate-limiter";
 import { initSocketIO } from "./socket/io";
 import RabbitMQ from "./services/rabbitmq";
 
-const app = express();
+export const app = express();
 
 /**
  * Trust first proxy
@@ -41,11 +41,6 @@ app.use(
  */
 const { server, io } = initSocketIO(app);
 app.set("io", io);
-
-/**
- * SPIN UP RABBITMQ CONNECTION
- */
-RabbitMQ.bootstrap();
 
 /*
  * Register Passport
@@ -97,10 +92,40 @@ app.use(entityParseHandler);
 app.use(errorHandler);
 
 /**
+ * Graceful shutdown — close the RabbitMQ connection and stop accepting
+ * connections so in-flight requests can drain before the process exits.
+ */
+function registerShutdown() {
+	const shutdown = async (signal: string) => {
+		console.log(`\n${signal} received — shutting down...`);
+		try {
+			await RabbitMQ.shutdown();
+		} catch (error) {
+			console.error("Error during RabbitMQ shutdown:", error);
+		}
+		server.close(() => process.exit(0));
+	};
+
+	process.on("SIGTERM", () => shutdown("SIGTERM"));
+	process.on("SIGINT", () => shutdown("SIGINT"));
+}
+
+/**
  * Start the server
  */
 async function startServer() {
 	await connectDB();
+
+	/**
+	 * Open the shared RabbitMQ connection, then start the in-process chat
+	 * consumer (needs both the connection and the /project namespace ready).
+	 * A broker outage must not stop the HTTP server from accepting traffic —
+	 * bootstrap retries then gives up, so guard the consumer separately.
+	 */
+	await RabbitMQ.bootstrap();
+
+	registerShutdown();
+
 	server.listen(config.env.APP_PORT, () => {
 		console.log(
 			`🚀 Server running in ${config.env.NODE_ENV} mode on http://localhost:${config.env.APP_PORT}`

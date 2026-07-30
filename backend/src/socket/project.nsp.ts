@@ -2,6 +2,9 @@ import { User } from "@/domains/v1/user/service";
 import { Namespace, Server, Socket } from "socket.io";
 import { BaseNamespace } from "./base.nsp";
 import { socketAuthMiddleware } from "./auth.socket";
+import { sendMessageSchema } from "@/domains/v1/chat/validation";
+import logger from "@/lib/logger";
+import { chatPublisher } from "@/domains/v1/chat/worker";
 
 interface SocketData {
 	userId: string;
@@ -54,6 +57,11 @@ export class ProjectNamespace extends BaseNamespace {
 			);
 		});
 
+		// Send a chat message
+		socket.on("message:send", (data, ack?: (res: unknown) => void) =>
+			this.handleMessageSend(socket, data, ack)
+		);
+
 		// Emit presence update
 		this.updateRoomPresence(socket.data.projectId, socket);
 	}
@@ -86,6 +94,51 @@ export class ProjectNamespace extends BaseNamespace {
 			projectId,
 			userId
 		});
+	}
+
+	/**
+	 * Handle a `message:send` event: validate the payload and publish it to the
+	 * `chat.messages` exchange. Persistence + the `message:new` broadcast happen
+	 * in the in-process consumer (write-behind), so nothing is emitted here.
+	 *
+	 * Wrapped in try/catch because socket handlers run outside the request
+	 * cycle — the publisher's AppError would otherwise be an unhandled rejection
+	 * instead of reaching the global error handler.
+	 *
+	 * @param socket - The sender's socket (carries projectId/user from handshake)
+	 * @param data - Raw `{ content, clientId? }` payload from the client
+	 * @param ack - Optional Socket.io acknowledgement callback
+	 */
+	private async handleMessageSend(
+		socket: Socket,
+		data: unknown,
+		ack?: (res: unknown) => void
+	) {
+		const parsed = sendMessageSchema.safeParse(data);
+		if (!parsed.success) {
+			ack?.({ ok: false, error: "Invalid message" });
+			return;
+		}
+
+		try {
+			await chatPublisher.publish(
+				{
+					projectId: socket.data.projectId,
+					senderId: socket.data.userId,
+					sender: socket.data.user,
+					content: parsed.data.content,
+					clientId: parsed.data.clientId
+				},
+				{
+					persistent: true
+				},
+				"project." + socket.data.projectId + ".message"
+			);
+			ack?.({ ok: true });
+		} catch (err) {
+			logger.error("[chat] publish failed:", err);
+			ack?.({ ok: false, error: "Failed to send message" });
+		}
 	}
 
 	/**
