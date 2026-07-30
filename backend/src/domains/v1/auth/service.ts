@@ -34,17 +34,17 @@ export const AuthServices = {
 						StatusCodes.UNAUTHORIZED,
 						"CREDENTIALS"
 					);
-				const { $access_token } = await AuthServices._generateTokens(
-					user,
-					res
-				);
+				const { $access_token, $refresh_token } =
+					await AuthServices._generateTokens(user, res);
+				const isMobile = req.headers["x-client-type"] === "mobile";
 				return ApiResponse.success(
 					res,
 					"User logged in successfully",
 					{
 						user,
 						tokens: {
-							access_token: $access_token
+							access_token: $access_token,
+							...(isMobile ? { refresh_token: $refresh_token } : {})
 						}
 					},
 					StatusCodes.OK
@@ -121,9 +121,9 @@ export const AuthServices = {
 	 * @returns {Promise<any>}
 	 */
 	refreshTokens: async (req: Request, res: Response) => {
-		const $token =
-			CookieUtil.getCookie(req, "refresh_token") ||
-			req.headers.authorization?.replace("Bearer ", "");
+		const cookieToken = CookieUtil.getCookie(req, "refresh_token");
+		const headerToken = req.headers["x-refresh-token"] as string | undefined;
+		const $token = cookieToken || headerToken;
 		if (!$token)
 			return ApiResponse.error(
 				res,
@@ -158,24 +158,32 @@ export const AuthServices = {
 		 * @param {Response} res
 		 * @returns {Object}
 		 */
-		const { $access_token } = await AuthServices._generateTokens(
-			{
-				id: user.id,
-				email: user.email,
-				name: user.name,
-				avatar: user.avatar,
-				provider: user.provider,
-				password_hash: ""
-			} as User,
-			res
-		);
+		const { $access_token, $refresh_token } =
+			await AuthServices._generateTokens(
+				{
+					id: user.id,
+					email: user.email,
+					name: user.name,
+					avatar: user.avatar,
+					provider: user.provider,
+					password_hash: ""
+				} as User,
+				res
+			);
+		/**
+		 * @description Respond in the same channel the request came through.
+		 * Cookie present => web (refresh token stays out of the body); token
+		 * supplied via the x-refresh-token header => mobile (return it in body).
+		 */
+		const fromCookie = !!cookieToken;
 		return ApiResponse.success(
 			res,
 			"Refresh token generated successfully",
 			{
 				user,
 				tokens: {
-					access_token: $access_token
+					access_token: $access_token,
+					...(fromCookie ? {} : { refresh_token: $refresh_token })
 				}
 			},
 			StatusCodes.OK

@@ -26,8 +26,16 @@ const router = express.Router();
  * /api/v1/auth/login:
  *   post:
  *     summary: Login with email and password
- *     description: Authenticates a user using email and password, setting access and refresh tokens in HttpOnly cookies, and returning user data with the access token.
+ *     description: Authenticates a user using email and password, setting access and refresh tokens in HttpOnly cookies, and returning user data with the access token. Native mobile clients that cannot hold HttpOnly cookies should send the `x-client-type: mobile` header to also receive the refresh token in the response body.
  *     tags: [Auth]
+ *     parameters:
+ *       - in: header
+ *         name: x-client-type
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [mobile]
+ *         description: Set to `mobile` for native clients. When present, `data.tokens.refresh_token` is included in the response body (for storage in secure OS storage). Omit for web clients, which rely on the HttpOnly cookie instead.
  *     requestBody:
  *       required: true
  *       content:
@@ -88,6 +96,10 @@ const router = express.Router();
  *                       properties:
  *                         access_token:
  *                           type: string
+ *                           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                         refresh_token:
+ *                           type: string
+ *                           description: Only returned when the request includes `x-client-type: mobile`.
  *                           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *       401:
  *         description: Invalid email or password
@@ -244,11 +256,18 @@ router.post("/logout", AuthServices.logout);
  * /api/v1/auth/refresh-token:
  *   post:
  *     summary: Refresh access token
- *     description: Generates a new access token using a refresh token supplied in the cookies or headers.
+ *     description: Generates a new access token from a refresh token. Web clients send it automatically via the HttpOnly `refresh_token` cookie. Native mobile clients send their stored refresh token in the `x-refresh-token` header instead. The response mirrors the request channel — a new `refresh_token` is returned in the body only when the token was supplied via the header (mobile); cookie-based (web) requests receive refreshed cookies and no `refresh_token` in the body.
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: x-refresh-token
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: The refresh token, for native mobile clients that cannot use the HttpOnly cookie. When used, the rotated `refresh_token` is returned in the response body.
  *     responses:
  *       200:
  *         description: Tokens refreshed successfully
@@ -276,6 +295,10 @@ router.post("/logout", AuthServices.logout);
  *                       properties:
  *                         access_token:
  *                           type: string
+ *                           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                         refresh_token:
+ *                           type: string
+ *                           description: Rotated refresh token, returned only when the request used the `x-refresh-token` header (mobile).
  *                           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *       401:
  *         description: Refresh token invalid or expired
