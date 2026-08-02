@@ -9,7 +9,8 @@ import {
 	eq,
 	type InferInsertModel,
 	type InferSelectModel,
-	SQL
+	SQL,
+	getTableColumns
 } from "drizzle-orm";
 
 export type User = InferSelectModel<typeof usersTable>;
@@ -21,9 +22,11 @@ export const UserServices = {
 		return created;
 	},
 
-	getById: async (id: number): Promise<User | null> => {
+	getById: async (id: number): Promise<Omit<User, "password_hash"> | null> => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { password_hash, ...rest } = getTableColumns(usersTable);
 		const result = await db
-			.select()
+			.select({ ...rest })
 			.from(usersTable)
 			.where(eq(usersTable.id, id));
 		return result[0] ?? null;

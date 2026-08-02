@@ -42,10 +42,14 @@ export const AuthServices = {
 					"User logged in successfully",
 					{
 						user,
-						tokens: {
-							access_token: $access_token,
-							...(isMobile ? { refresh_token: $refresh_token } : {})
-						}
+						...(isMobile
+							? {
+									tokens: {
+										access_token: $access_token,
+										refresh_token: $refresh_token
+									}
+								}
+							: {})
 					},
 					StatusCodes.OK
 				);

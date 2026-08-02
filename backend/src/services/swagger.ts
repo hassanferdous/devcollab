@@ -17,6 +17,12 @@ const options: swaggerJSDoc.Options = {
 				description: "Local development server"
 			}
 		],
+		tags: [
+			{
+				name: "Auth",
+				description: "All Auth APIs"
+			}
+		],
 		components: {
 			securitySchemes: {
 				bearerAuth: {

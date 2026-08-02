@@ -1,4 +1,4 @@
-import { User, UserServices } from "@domains/v1/user/service";
+import { UserServices } from "@domains/v1/user/service";
 import bcrypt from "bcrypt";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -23,10 +23,8 @@ passport.use(
 					message: "Incorrect email or password."
 				});
 			}
-			const sanitizedUser: User = {
-				...user,
-				password_hash: ""
-			};
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { password_hash, ...sanitizedUser } = user;
 			return cb(null, sanitizedUser);
 		}
 	)
