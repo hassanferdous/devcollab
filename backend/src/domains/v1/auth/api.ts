@@ -26,7 +26,7 @@ const router = express.Router();
  * /api/v1/auth/login:
  *   post:
  *     summary: Login with email and password
- *     description: Authenticates a user using email and password, setting access and refresh tokens in HttpOnly cookies, and returning user data with the access token. Native mobile clients that cannot hold HttpOnly cookies should send the `x-client-type: mobile` header to also receive the refresh token in the response body.
+ *     description: Authenticates a user using email and password, setting access and refresh tokens in HttpOnly cookies, and returning user data with the access token. Native mobile clients that cannot hold HttpOnly cookies should send the `x-client-type=mobile` header to also receive the refresh token in the response body.
  *     tags: [Auth]
  *     parameters:
  *       - in: header
@@ -99,7 +99,7 @@ const router = express.Router();
  *                           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *                         refresh_token:
  *                           type: string
- *                           description: Only returned when the request includes `x-client-type: mobile`.
+ *                           description: Only returned when the request includes `x-client-type=mobile`.
  *                           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *       401:
  *         description: Invalid email or password

@@ -17,6 +17,7 @@ import passport from "passport";
 import { apiLimiter } from "./middlewares/rate-limiter";
 import { initSocketIO } from "./socket/io";
 import RabbitMQ from "./services/rabbitmq";
+import { startWorkers } from "./worker";
 
 export const app = express();
 
@@ -122,7 +123,8 @@ async function startServer() {
 	 * A broker outage must not stop the HTTP server from accepting traffic —
 	 * bootstrap retries then gives up, so guard the consumer separately.
 	 */
-	await RabbitMQ.bootstrap();
+	await RabbitMQ.connect();
+	await startWorkers();
 
 	registerShutdown();
 

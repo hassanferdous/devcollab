@@ -3,8 +3,9 @@ import { Namespace, Server, Socket } from "socket.io";
 import { BaseNamespace } from "./base.nsp";
 import { socketAuthMiddleware } from "./auth.socket";
 import { sendMessageSchema } from "@/domains/v1/chat/validation";
-import logger from "@/lib/logger";
 import { chatPublisher } from "@/domains/v1/chat/worker";
+import logger from "@/lib/logger";
+// import { chatPublisher } from "@/domains/v1/chat/worker";
 
 interface SocketData {
 	userId: string;
@@ -121,6 +122,7 @@ export class ProjectNamespace extends BaseNamespace {
 		}
 
 		try {
+			await chatPublisher.init();
 			await chatPublisher.publish(
 				{
 					projectId: socket.data.projectId,

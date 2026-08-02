@@ -27,6 +27,13 @@ interface ServerToClientEvents {
 interface ClientToServerEvents {
 	"user:typing": (data: any) => void;
 	"user:typing-stop": (data: any) => void;
+	"message:send": (data: {
+		projectId: number;
+		senderId: number;
+		sender: number;
+		content: string;
+		clientId?: string;
+	}) => void;
 }
 
 type ProjectSocket = Socket<ServerToClientEvents, ClientToServerEvents>;

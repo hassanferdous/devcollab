@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
 	Form,
@@ -7,7 +7,7 @@ import {
 	FormItem,
 	FormMessage,
 } from "~/components/ui/form";
-import { cn, wait } from "~/lib/utils";
+import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { useProjectContext } from "../providers/project-slug-provider";
@@ -27,7 +27,17 @@ export function MessageForm() {
 
 	const { debouncedFn } = useDebounce();
 
-	const onSubmit = (data: { message: string }) => {};
+	const onSubmit = (data: { message: string }) => {
+		const socket = getProjectSocket(Number(projectId));
+		socket.emit("message:send", {
+			projectId: Number(projectId),
+			senderId: Number(user?.id),
+			sender: Number(user?.id),
+			content: data.message,
+		});
+		form.reset();
+		setIsFocused(false);
+	};
 	const isActive = isFocused || form.getValues("message").trim().length > 0;
 	const isTyping = useRef<boolean>(false);
 

@@ -103,52 +103,27 @@ export class RabbitMQ<T> {
 	private channel: Channel | null = null;
 	private confirmChannel: ConfirmChannel | null = null;
 	private readonly config: ResolvedConfig<T>;
-	/** Resolves once this instance's channel + topology are ready. */
-	private readonly ready: Promise<void>;
+	private isInitialized: boolean = false;
 
 	/**
 	 * @param {QueueSetupConfig} rawConfig - Exchange/queue/routing plus optional
 	 * DLQ, retry, durability, prefetch and publish-confirm settings.
 	 */
 	constructor(rawConfig: QueueSetupConfig<T>) {
-		this.config = RabbitMQ.resolveConfig(rawConfig);
-		this.ready = this.init();
+		this.config = this.resolveConfig(rawConfig);
 	}
 
+	/**************************************************************** */
+	/********************** Static Methods ************************* */
+	/**************************************************************** */
 	/**
-	 * Applies the `name` shorthand: fills in `exchange` (and `routingKey`, when
-	 * a `queue` is set) from `name` if they weren't given explicitly. Validates
-	 * that a queue-mode instance always ends up with a routingKey.
-	 * @param {QueueSetupConfig} raw - The config passed to the constructor.
-	 * @returns {ResolvedConfig} - Config with `exchange` guaranteed to be set.
-	 * @throws {Error} - If neither `exchange` nor `name` is provided, or if
-	 * `queue` is set without a resolvable `routingKey`.
+	 * Create a connection to the RabbitMQ server.
+	 * @function connect
+	 * @param {number} maxRetries - Maximum number of retries on connection failure (default: 5)
+	 * @param {number} delay - Delay between retries in milliseconds (default: 1000)
+	 * @returns {Promise<void>} - Promise that resolves when the connection is established or all retries are exhausted
 	 */
-	private static resolveConfig<U>(
-		raw: QueueSetupConfig<U>
-	): ResolvedConfig<U> {
-		const exchange = raw.exchange ?? raw.name;
-		if (!exchange) {
-			throwError(
-				"RabbitMQ: either `exchange` or `name` must be provided.",
-				StatusCodes.BAD_REQUEST
-			);
-		}
-
-		const routingKey = raw.queue
-			? (raw.routingKey ?? raw.name)
-			: raw.routingKey;
-		if (raw.queue && !routingKey) {
-			throwError(
-				"RabbitMQ: `routingKey` (or `name` as a fallback) is required when `queue` is set.",
-				StatusCodes.BAD_REQUEST
-			);
-		}
-
-		return { ...raw, exchange, routingKey };
-	}
-
-	static async bootstrap(
+	static async connect(
 		maxRetries: number = 5,
 		delay: number = 1000
 	): Promise<void> {
@@ -185,11 +160,53 @@ export class RabbitMQ<T> {
 				`[RabbitMQ] connect failed, retrying in ${delay}ms (${maxRetries} attempt(s) left)`
 			);
 			await new Promise((resolve) => setTimeout(resolve, delay));
-			await RabbitMQ.bootstrap(maxRetries - 1, delay * 2);
+			await RabbitMQ.connect(maxRetries - 1, delay * 2);
 		}
 	}
 
-	private static getConnection(): ChannelModel {
+	static async shutdown(): Promise<void> {
+		await RabbitMQ.connection?.close();
+		RabbitMQ.connection = null;
+	}
+
+	/**************************************************************** */
+	/*********************** Private Methods ************************** */
+	/**************************************************************** */
+
+	/**
+	 * Resolve the configuration for the RabbitMQ instance.
+	 * @param {QueueSetupConfig} raw - The raw configuration for the RabbitMQ instance.
+	 * @returns {ResolvedConfig} - The resolved configuration for the RabbitMQ instance.
+	 */
+	private resolveConfig<U>(raw: QueueSetupConfig<U>): ResolvedConfig<U> {
+		const exchange = raw.exchange ?? raw.name;
+		if (!exchange) {
+			throwError(
+				"RabbitMQ: either `exchange` or `name` must be provided.",
+				StatusCodes.BAD_REQUEST
+			);
+		}
+
+		const routingKey = raw.queue
+			? (raw.routingKey ?? raw.name)
+			: raw.routingKey;
+		if (raw.queue && !routingKey) {
+			throwError(
+				"RabbitMQ: `routingKey` (or `name` as a fallback) is required when `queue` is set.",
+				StatusCodes.BAD_REQUEST
+			);
+		}
+
+		return { ...raw, exchange, routingKey };
+	}
+
+	/**
+	 * Get the RabbitMQ connection.
+	 * @function getConnection
+	 * @returns {ChannelModel} - The RabbitMQ connection
+	 * @throws {Error} - If the connection is not established
+	 */
+	private getConnection(): ChannelModel {
 		if (!RabbitMQ.connection) {
 			throwError(
 				"RabbitMQ: no active connection. Call RabbitMQ.bootstrap() on server boot first.",
@@ -199,25 +216,21 @@ export class RabbitMQ<T> {
 		return RabbitMQ.connection;
 	}
 
-	static async shutdown(): Promise<void> {
-		await RabbitMQ.connection?.close();
-		RabbitMQ.connection = null;
-	}
-
-	private async init(): Promise<void> {
-		const connection = RabbitMQ.getConnection();
-		if (this.config.publishConfirm) {
-			this.confirmChannel = await connection.createConfirmChannel();
-		} else {
-			this.channel = await connection.createChannel();
-		}
-		await this.setupTopology();
-	}
-
-	private usesConfirm(): boolean {
+	/**
+	 * Check if publish confirm is enabled.
+	 * @function isEnabledPubConfirm
+	 * @returns {boolean} - True if publish confirm is enabled, false otherwise
+	 */
+	private isEnabledPubConfirm(): boolean {
 		return !!this.config.publishConfirm;
 	}
 
+	/**
+	 * Get the active channel.
+	 * @function getActiveChannel
+	 * @returns {Channel} - The active channel
+	 * @throws {Error} - If the channel is not initialized
+	 */
 	private activeChannel(): Channel {
 		const ch = this.confirmChannel ?? this.channel;
 		if (!ch) {
@@ -313,6 +326,9 @@ export class RabbitMQ<T> {
 		await ch.prefetch(prefetchCount);
 	}
 
+	/**************************************************************** */
+	/**** Publisher Methods ****/
+	/**************************************************************** */
 	private publishSingle(
 		channel: ConfirmChannel,
 		content: Buffer,
@@ -340,13 +356,51 @@ export class RabbitMQ<T> {
 		return channel.waitForConfirms();
 	}
 
-	/**
-	 * Consumes from this instance's configured queue. Throws if this instance
-	 * was constructed without a `queue` (publisher-only mode).
-	 */
-	private async consume(): Promise<void> {
-		await this.ready;
+	async publish(
+		message: T,
+		options: amqp.Options.Publish = {},
+		routingKeyOverride?: string
+	): Promise<void> {
+		const content = Buffer.from(JSON.stringify(message));
+		const routingKey = routingKeyOverride ?? this.config.routingKey;
 
+		if (!routingKey) {
+			throwError(
+				"RabbitMQ: no routingKey configured and none passed to publish() — required for this instance.",
+				StatusCodes.BAD_REQUEST
+			);
+		}
+
+		if (this.isEnabledPubConfirm()) {
+			const channel = this.getConfirmChannel();
+			if (this.config.publishConfirm === "batch") {
+				return this.publishBatch(channel, content, options, routingKey);
+			}
+			return this.publishSingle(channel, content, options, routingKey);
+		}
+
+		const channel = this.getChannel();
+		const ok = channel.publish(
+			this.config.exchange,
+			routingKey,
+			content,
+			options
+		);
+
+		if (!ok) {
+			throwError(
+				"RabbitMQ: message not published",
+				StatusCodes.INTERNAL_SERVER_ERROR
+			);
+		}
+
+		this.config.onPublish?.(message);
+	}
+
+	/**************************************************************** */
+	/********************** Consumers Methods ************************* */
+	/**************************************************************** */
+	private async consume(): Promise<void> {
 		if (!this.config.queue) {
 			throwError(
 				"RabbitMQ: this instance was created without a `queue` (publisher-only mode) — cannot call consume().",
@@ -391,64 +445,55 @@ export class RabbitMQ<T> {
 		});
 	}
 
-	/**
-	 * @param routingKeyOverride - Optional dynamic routing key (e.g. `dm.42.message`).
-	 * Falls back to `config.routingKey` if omitted — needed for topic exchanges
-	 * where the key depends on the specific conversation/room being published to.
-	 * Publisher-only instances (no `queue`/`routingKey` configured) should
-	 * always pass this explicitly.
-	 */
-	async publish(
-		message: T,
-		options: amqp.Options.Publish = {},
-		routingKeyOverride?: string
-	): Promise<void> {
-		await this.ready;
-		const content = Buffer.from(JSON.stringify(message));
-		const routingKey = routingKeyOverride ?? this.config.routingKey;
+	/**************************************************************** */
+	/*********************** Public Methods *************************** */
+	/**************************************************************** */
 
-		if (!routingKey) {
+	/**
+	 * Initialize the RabbitMQ instance.
+	 * @function init
+	 * @returns {Promise<void>} - Promise that resolves when the RabbitMQ instance is initialized
+	 */
+	async init(): Promise<void> {
+		if (this.isInitialized) return;
+		const connection = this.getConnection();
+		if (this.config.publishConfirm) {
+			this.confirmChannel = await connection.createConfirmChannel();
+		} else {
+			this.channel = await connection.createChannel();
+		}
+		await this.setupTopology();
+	}
+
+	/**
+	 * Start consuming messages from RabbitMQ.
+	 *
+	 * @function startConsuming
+	 * @returns {Promise<void>}
+	 */
+	async startConsuming(): Promise<void> {
+		const name = this.config.name;
+		if (!name) {
 			throwError(
-				"RabbitMQ: no routingKey configured and none passed to publish() — required for this instance.",
+				"RabbitMQ: this instance was created without a `name` — cannot call startConsuming().",
 				StatusCodes.BAD_REQUEST
 			);
 		}
-
-		if (this.usesConfirm()) {
-			const channel = this.getConfirmChannel();
-			if (this.config.publishConfirm === "batch") {
-				return this.publishBatch(channel, content, options, routingKey);
-			}
-			return this.publishSingle(channel, content, options, routingKey);
-		}
-
-		const channel = this.getChannel();
-		const ok = channel.publish(
-			this.config.exchange,
-			routingKey,
-			content,
-			options
-		);
-
-		if (!ok) {
-			throwError(
-				"RabbitMQ: message not published",
-				StatusCodes.INTERNAL_SERVER_ERROR
+		try {
+			await this.init();
+			await this.consume();
+			logger.info(`[RabbitMQ] Started consuming from "${name}"`);
+		} catch (error) {
+			logger.error(
+				`[RabbitMQ] Failed to start consuming from "${name}"`,
+				error
 			);
 		}
-
-		this.config.onPublish?.(message);
 	}
 
 	async close(): Promise<void> {
 		await this.channel?.close();
 		await this.confirmChannel?.close();
-	}
-
-	async start(): Promise<void> {
-		if (this.config.onConsume) {
-			await this.consume();
-		}
 	}
 }
 
