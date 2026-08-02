@@ -20,7 +20,8 @@ export function useLogin() {
 		mutationFn: (data: LoginFormData) => authApi.login(data),
 		onSuccess: (res) => {
 			const { user, tokens } = res.data.data;
-			setAuth(user, tokens.access_token);
+			// Web auth is cookie-based; `tokens` is only sent to mobile clients.
+			setAuth(user, tokens?.access_token ?? "");
 			router.navigate({ to: "/dashboard" });
 		},
 	});

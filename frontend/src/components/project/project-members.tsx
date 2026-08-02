@@ -112,7 +112,11 @@ export function AddMemberDialog({
 		}
 		setSearching(true);
 		try {
-			const res = await userApi.getAll({ search: query.trim(), page: 1, limit: 5 });
+			const res = await userApi.getAll({
+				search: query.trim(),
+				page: 1,
+				limit: 5,
+			});
 			const users: User[] = res.data.data?.data ?? [];
 			setResults(users);
 			setNotFound(users.length === 0);
@@ -168,7 +172,12 @@ export function AddMemberDialog({
 	};
 
 	return (
-		<Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetDialog(); }}>
+		<Dialog
+			open={addOpen}
+			onOpenChange={(o) => {
+				setAddOpen(o);
+				if (!o) resetDialog();
+			}}>
 			<DialogTrigger asChild>{children}</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
@@ -208,8 +217,12 @@ export function AddMemberDialog({
 												</AvatarFallback>
 											</Avatar>
 											<div className="min-w-0">
-												<p className="text-sm font-medium truncate">{u.name}</p>
-												<p className="text-xs text-muted-foreground truncate">{u.email}</p>
+												<p className="text-sm font-medium truncate">
+													{u.name}
+												</p>
+												<p className="text-xs text-muted-foreground truncate">
+													{u.email}
+												</p>
 											</div>
 										</button>
 									))}
@@ -221,14 +234,20 @@ export function AddMemberDialog({
 						{selectedUser && (
 							<div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
 								<Avatar className="size-8 shrink-0">
-									<AvatarImage src={selectedUser.avatar ?? undefined} />
+									<AvatarImage
+										src={selectedUser.avatar ?? undefined}
+									/>
 									<AvatarFallback className="text-xs">
 										{getInitials(selectedUser.name)}
 									</AvatarFallback>
 								</Avatar>
 								<div className="min-w-0 flex-1">
-									<p className="text-sm font-medium truncate">{selectedUser.name}</p>
-									<p className="text-xs text-muted-foreground truncate">{selectedUser.email}</p>
+									<p className="text-sm font-medium truncate">
+										{selectedUser.name}
+									</p>
+									<p className="text-xs text-muted-foreground truncate">
+										{selectedUser.email}
+									</p>
 								</div>
 								<button
 									type="button"
@@ -284,11 +303,18 @@ export function AddMemberDialog({
 							<Button
 								type="button"
 								variant="outline"
-								onClick={() => { setAddOpen(false); resetDialog(); }}>
+								onClick={() => {
+									setAddOpen(false);
+									resetDialog();
+								}}>
 								Cancel
 							</Button>
-							<Button type="submit" disabled={isPending || (!selectedUser && !notFound)}>
-								{isPending && <Loader2 className="size-4 animate-spin" />}
+							<Button
+								type="submit"
+								disabled={isPending || (!selectedUser && !notFound)}>
+								{isPending && (
+									<Loader2 className="size-4 animate-spin" />
+								)}
 								{notFound ? "Send invitation" : "Add member"}
 							</Button>
 						</div>
@@ -307,6 +333,8 @@ export function ProjectMembers({
 	const [removeTarget, setRemoveTarget] = useState<ProjectMember | null>(null);
 	const { mutate, isPending } = useManageMember(projectId);
 	const { user: currentUser } = useAuthStore();
+
+	console.log({ currentUser });
 
 	const handleRemoveMember = () => {
 		if (!removeTarget) return;
