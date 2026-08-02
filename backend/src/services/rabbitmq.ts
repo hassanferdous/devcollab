@@ -75,26 +75,27 @@ export type ConsumeCallback = (event: ConsumeEvent) => void;
  * A single instance can do both if you call `.publish()` and `.consume()`
  * on it — useful in a monolith where one process owns both roles.
  *
- * **Connection lifecycle.** {@link RabbitMQ.bootstrap} opens ONE shared
+ * **Connection lifecycle.** {@link RabbitMQ.connect} opens ONE shared
  * connection for the whole process. Call it once on server boot.
  *
  * **Per-queue instances.** `new RabbitMQ(config)` is created lazily,
- * wherever a particular exchange/queue is actually needed. Each instance
- * opens its own channel on top of the shared connection. Channel setup is
- * asynchronous and kicked off in the constructor; `publish`/`consume` await
- * it internally, so callers can use an instance immediately after
- * construction without a manual `init()` step.
+ * wherever a particular exchange/queue is actually needed. Construction only
+ * resolves config — no channel is opened. Call {@link RabbitMQ.init} to open
+ * this instance's channel and assert its topology (idempotent — safe to call
+ * on every publish), or {@link RabbitMQ.startConsuming} which inits then
+ * consumes. Each instance opens its own channel on top of the shared connection.
  *
  * @example
- * await RabbitMQ.bootstrap();
+ * await RabbitMQ.connect();
  *
  * // Publisher-only — no queue, just asserts the exchange
  * const events = new RabbitMQ({ name: "chat.messages", exchangeType: "topic", publishConfirm: "single" });
- * await events.publish({ id: 1 }, {}, undefined, "dm.42.message");
+ * await events.init();
+ * await events.publish({ id: 1 }, {}, "dm.42.message");
  *
  * // Consumer (or publisher+consumer) — queue required
  * const worker = new RabbitMQ({ name: "tasks", queue: "task.created", routingKey: "task.created" });
- * await worker.consume(async (payload) => { ... });
+ * await worker.startConsuming();
  *
  * @class RabbitMQ
  */
@@ -209,7 +210,7 @@ export class RabbitMQ<T> {
 	private getConnection(): ChannelModel {
 		if (!RabbitMQ.connection) {
 			throwError(
-				"RabbitMQ: no active connection. Call RabbitMQ.bootstrap() on server boot first.",
+				"RabbitMQ: no active connection. Call RabbitMQ.connect() on server boot first.",
 				StatusCodes.NOT_IMPLEMENTED
 			);
 		}
@@ -463,6 +464,7 @@ export class RabbitMQ<T> {
 			this.channel = await connection.createChannel();
 		}
 		await this.setupTopology();
+		this.isInitialized = true;
 	}
 
 	/**

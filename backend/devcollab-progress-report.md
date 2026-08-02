@@ -1,8 +1,10 @@
 # DevCollab — Progress Report & Week Plan
 
-_Updated 2026-07-30 (originally 2026-07-13). Measured against `devcollab-weekly-guide.md` (6-week roadmap)._
+_Updated 2026-08-02 (originally 2026-07-13). Measured against `devcollab-weekly-guide.md` (6-week roadmap)._
 
-> **Since the last report (07-24 → 07-30):** **RabbitMQ landed as a reusable `RabbitMQ<T>` abstraction** (`src/services/rabbitmq.ts`) — one shared process connection (`bootstrap()`, opened in `server.ts`), per-instance channels, publisher-only vs consumer modes, DLQ + a TTL "parking-queue" retry mechanism, and confirm channels. On top of it, **team chat** shipped as a write-behind pipeline: `message:send` (socket) → publish to the `chat.messages` topic exchange → in-process consumer persists to the new `messages` table and broadcasts `message:new`. A paginated **chat-history endpoint** (`GET /projects/:projectId/chat/messages`) backfills on load. ⚠️ **The chat consumer is defined (`chatPersistWorker`) but not yet `.start()`-ed in `server.ts`** — deferred intentionally; only `RabbitMQ.bootstrap()` runs today, so live messages publish but aren't persisted/broadcast until the consumer is wired up.
+> **Since the last report (07-30 → 08-02):** **the chat consumer is now wired and the RabbitMQ lifecycle was decoupled from construction** (commit `c1dd21f`). A new `src/worker/index.ts` `startWorkers()` starts `chatPersistWorker.startConsuming()`, called from `server.ts` right after `RabbitMQ.connect()` (renamed from `bootstrap()`). Instances no longer auto-init in the constructor — init is now explicit: `init()` (idempotent, channel + topology) and `startConsuming()` (`init()` + `consume()`, error-guarded so a broker outage never crashes boot). With this, the chat pipeline is end-to-end: `message:send` → publish → persist → `message:new` broadcast. A follow-up (08-02) **fixed a publisher channel leak** — `init()` now sets `isInitialized = true`, so the guard actually arms and the per-message `chatPublisher.init()` is a cheap no-op after the first call (plus stale `bootstrap()` doc references and a dead import cleaned up).
+
+> **Prior report (07-24 → 07-30):** **RabbitMQ landed as a reusable `RabbitMQ<T>` abstraction** (`src/services/rabbitmq.ts`) — shared process connection, per-instance channels, publisher-only vs consumer modes, DLQ + a TTL "parking-queue" retry mechanism, and confirm channels. On top of it, **team chat** shipped as a write-behind pipeline and a paginated **chat-history endpoint** (`GET /projects/:projectId/chat/messages`).
 
 > **Prior report (07-22 → 07-24):** **task filtering/sorting** shipped — `GET /projects/:projectId/tasks` now accepts `status`, `priority`, `assignee_ids`, `sort`, and `order`, applied as a single dynamic filtered/sorted/paginated query in `TaskServices.getAll`. **DB indexes** on FK/filter columns then landed (07-24) — 7 Drizzle indexes across `tasks`, `task_members`, `task_activity_log`, and `project_members`, applied via `drizzle-kit push`. This also folded in a round of **schema-correctness fixes** (see §2).
 
@@ -18,9 +20,9 @@ _Updated 2026-07-30 (originally 2026-07-13). Measured against `devcollab-weekly-
 | ---- | --------------------------------------------- | -------------- | ----- |
 | 1    | Setup & Authentication                        | ✅ Complete    | ~100% |
 | 2    | Projects & Tasks (CRUD + RBAC + transactions) | 🟡 Mostly done | ~85%  |
-| 3    | Real-time (Socket.io)                         | 🟡 Mostly done | ~90%  |
+| 3    | Real-time (Socket.io)                         | ✅ Complete    | ~100% |
 | 4    | Redis & Caching (+ rate limiting)             | 🟡 Mostly done | ~90%  |
-| 5    | Message Broker (RabbitMQ)                     | 🟡 In progress | ~55%  |
+| 5    | Message Broker (RabbitMQ)                     | 🟡 In progress | ~60%  |
 | 6    | Docker & Deployment                           | 🟡 Partial     | ~40%  |
 
 After a June 18 → July 22 pause, feature work resumed with **rate limiting** (07-22), then **task filtering/sorting + indexes** (07-24), and now the **RabbitMQ broker + team chat** (07-30). Week 5's remaining critical path is the email/notification worker, DLQ verification, and the `task_due_soon` cron — plus wiring up the chat consumer.
@@ -65,7 +67,9 @@ After a June 18 → July 22 pause, feature work resumed with **rate limiting** (
 - **Generic `RabbitMQ<T>` abstraction** (`src/services/rabbitmq.ts`) — replaces the earlier `config/rabbitmq.ts` `RabbitMQService`. One shared process connection via static `bootstrap()` (retry-with-backoff, gives up gracefully so a broker outage never blocks the HTTP server), opened in `server.ts` startup and closed on graceful shutdown. Each instance opens its own channel lazily in the constructor; `publish`/`consume` await readiness internally. Supports **publisher-only** (omit `queue`) vs **consumer** modes, a `name` shorthand for 1:1 exchange/queue/routing-key setups, **DLQ** (dead-letter exchange + `<queue>.dlq`), a **delayed-retry** mechanism (a TTL "parking" queue that dead-letters back into the main exchange after `retryDelayMs`), configurable `prefetch`, and **publish-confirm** channels (`single`/`batch`).
 - **Chat pipeline built on it** (`src/domains/v1/chat/worker.ts`): `chatPublisher` (publisher-only, single confirm) and `chatPersistWorker` (consumer on `chat.persist`, routing `project.*.message`, `prefetch 1`, retry ×3 / 5s). `onConsume` persists via `ChatServices.create` then broadcasts `message:new` (with the sender profile + echoed `clientId`) to `project:${id}`.
 - **Chat persistence + history:** new `messages` table (`src/db/message.schema.ts`) — `project_id`/`sender_id` FKs (cascade), `content`, `is_edited`, timestamps, index `(project_id, created_at)`. `ChatServices.getHistory` returns a newest-first paginated slice with the sender's public profile joined; exposed at `GET /projects/:projectId/chat/messages` (`auth → validate → projectAccess("Message")`, Swagger-documented).
-- ⚠️ **Not yet wired:** `chatPersistWorker.start()` is **not** called in `server.ts` — only `RabbitMQ.bootstrap()` runs. So published messages sit unconsumed until the consumer is started (deferred intentionally). The email/notification worker, DLQ verification, and `task_due_soon` cron are also still outstanding.
+- **Consumer wired + lifecycle decoupled (08-02, `c1dd21f`):** removed constructor auto-init; init is now explicit — `init()` (idempotent, opens channel + asserts topology) and `startConsuming()` (`init()` + `consume()`, wrapped so a broker outage logs and continues instead of crashing boot). `bootstrap()` → `connect()`. New `src/worker/index.ts` `startWorkers()` runs `chatPersistWorker.startConsuming()`, invoked in `server.ts` after `RabbitMQ.connect()`. Chat is now **functionally end-to-end** (publish → persist → broadcast).
+- **Fixed — publisher channel leak (08-02):** `init()` early-returned on `isInitialized` but never set it, so the guard was dead and `project.nsp.ts`'s per-message `chatPublisher.init()` opened a fresh confirm channel on every message (climbing toward the broker's channel-max). `init()` now sets `this.isInitialized = true` after topology setup, so repeat calls are cheap no-ops. Also refreshed the stale `bootstrap()` → `connect()` doc/error references and removed a dead import in `project.nsp.ts`.
+- **Still outstanding:** email/notification worker + publisher, DLQ verification, `task_due_soon` cron.
 
 **Week 6 — Docker (partial)**
 
@@ -81,7 +85,8 @@ After a June 18 → July 22 pause, feature work resumed with **rate limiting** (
 | ~~**DB indexes** on FK/filter columns~~                                                 | 2    | ✅ Done (07-24) |
 | **File attachments** (multer + `task_attachments`)                                      | 2    | M               |
 | ~~**Team chat** + `messages` persistence (`message:send`/`message:new`, history endpoint)~~ | 3    | ✅ Done (07-30) |
-| **Wire chat consumer** — call `chatPersistWorker.start()` in `server.ts`                 | 3/5  | S               |
+| ~~**Wire chat consumer** — `startWorkers()` in `server.ts`~~                              | 3/5  | ✅ Done (08-02) |
+| ~~**Fix publisher channel leak** — set `isInitialized = true` in `init()`~~               | 5    | ✅ Done (08-02) |
 | ~~**Rate limiting** on auth endpoints (Redis-backed)~~                                  | 4    | ✅ Done (07-22) |
 | ~~**RabbitMQ** broker + reusable `RabbitMQ<T>` abstraction (DLQ, retry, confirms)~~      | 5    | ✅ Done (07-30) |
 | **RabbitMQ**: email/notification worker + publisher, DLQ verification, `task_due_soon` cron | 5    | L               |

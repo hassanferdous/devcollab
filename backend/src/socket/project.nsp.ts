@@ -5,7 +5,6 @@ import { socketAuthMiddleware } from "./auth.socket";
 import { sendMessageSchema } from "@/domains/v1/chat/validation";
 import { chatPublisher } from "@/domains/v1/chat/worker";
 import logger from "@/lib/logger";
-// import { chatPublisher } from "@/domains/v1/chat/worker";
 
 interface SocketData {
 	userId: string;
