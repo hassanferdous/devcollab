@@ -1,4 +1,5 @@
 export * from './auth'
 export * from './common'
+export * from './message'
 export * from './project'
 export * from './task'

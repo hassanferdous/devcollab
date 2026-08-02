@@ -56,17 +56,8 @@ import type {
 } from "~/types";
 import { useProjectContext } from "../providers/project-slug-provider";
 import { Can } from "@casl/react";
-import { MessageForm } from "./message-form";
-
-function getInitials(name: string | null | undefined) {
-	if (!name) return "?";
-	return name
-		.split(" ")
-		.map((n) => n[0])
-		.join("")
-		.toUpperCase()
-		.slice(0, 2);
-}
+import { ProjectChat } from "../project/project-chat";
+import { getInitials } from "~/lib/utils";
 
 const statusConfig: Record<TaskStatus, { label: string; badgeCls: string }> = {
 	pending: {
@@ -720,20 +711,16 @@ export function TaskDetail({
 						)}
 					</div>
 
-					{/* Right – comments & activity */}
-					<div className="max-md:border-t md:border-l border-border w-full md:w-[320px] md:shrink-0 overflow-y-auto px-4 py-4 flex flex-col gap-4">
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-								<MessageSquare className="size-4" />
-								Comments and activity
-							</div>
-							<button className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-								Show details
-							</button>
+					{/* Right – project discussion (shared project chat) */}
+					<div className="max-md:border-t md:border-l border-border w-full md:w-[340px] md:shrink-0 flex flex-col min-h-0 max-md:h-[420px]">
+						<div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0 text-sm font-semibold text-muted-foreground">
+							<MessageSquare className="size-4" />
+							Comments and activity
 						</div>
-
-						{/* Comment input placeholder */}
-						<MessageForm />
+						<ProjectChat
+							projectId={projectId}
+							className="min-h-0 flex-1"
+						/>
 					</div>
 				</div>
 			</DialogContent>

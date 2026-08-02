@@ -70,11 +70,13 @@ export const ChatServices = {
 
 		const query = db
 			.select({
-				message: messagesTable,
-				sender: {
-					id: usersTable.id,
-					name: usersTable.name,
-					avatar: usersTable.avatar
+				record: {
+					...messagesTable,
+					sender: {
+						id: usersTable.id,
+						name: usersTable.name,
+						avatar: usersTable.avatar
+					}
 				},
 				count: sql<number>`count(*) over()`
 			})

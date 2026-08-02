@@ -4,18 +4,21 @@ import { useProjectContext } from "~/components/providers/project-slug-provider"
 import { getProjectSocket } from "~/lib/socket";
 import { useAuthStore } from "~/stores/auth";
 import type {
+	ChatMessage,
+	MessageNewPayload,
 	Task,
 	TaskCreatedPayload,
 	TaskDeletedPayload,
 	TaskUpdatedPayload,
 } from "~/types";
 import { taskKeys } from "~/queries/use-tasks";
+import { messageKeys, type MessageListData } from "~/queries/use-messages";
 
 export function useProjectSocket(projectId: number) {
 	const qc = useQueryClient();
 	const { accessToken, user } = useAuthStore();
 	const userId = user?.id!;
-	const { setOnlineUsers } = useProjectContext();
+	const { setOnlineUsers, setTypingUsers } = useProjectContext();
 
 	useEffect(() => {
 		if (!projectId || !userId) return;
@@ -63,12 +66,35 @@ export function useProjectSocket(projectId: number) {
 			);
 		});
 
+		socket.on("message:new", (msg: MessageNewPayload) => {
+			qc.setQueryData<MessageListData>(
+				messageKeys.lists(projectId),
+				(old) => {
+					const list = old?.data ?? [];
+					// Reconcile the sender's optimistic row by clientId; otherwise append.
+					const idx = msg.clientId
+						? list.findIndex((m) => m.clientId === msg.clientId)
+						: -1;
+					const reconciled: ChatMessage = { ...msg, pending: false };
+					const data =
+						idx >= 0
+							? list.map((m, i) => (i === idx ? reconciled : m))
+							: [...list, reconciled];
+					return { data, pagination: old?.pagination };
+				},
+			);
+		});
+
 		socket.on("user:typing", (data) => {
-			console.log(`user started typing`, data);
+			if (!data || data.userId === userId) return;
+			setTypingUsers((prev) =>
+				prev.includes(data.userId) ? prev : [...prev, data.userId],
+			);
 		});
 
 		socket.on("user:typing-stop", (data) => {
-			console.log(`user stopped typing`, data);
+			if (!data) return;
+			setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
 		});
 
 		socket.on("presence:updated", (data) => {
@@ -80,9 +106,10 @@ export function useProjectSocket(projectId: number) {
 			socket.off("task:created");
 			socket.off("task:updated");
 			socket.off("task:deleted");
+			socket.off("message:new");
 			socket.off("user:typing");
 			socket.off("user:typing-stop");
 			socket.off("presence:updated");
 		};
-	}, [accessToken, projectId, qc, userId, setOnlineUsers]);
+	}, [accessToken, projectId, qc, userId, setOnlineUsers, setTypingUsers]);
 }

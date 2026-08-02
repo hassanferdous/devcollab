@@ -1,5 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 import type {
+	MessageNewPayload,
 	ProjectJoinedPayload,
 	TaskCreatedPayload,
 	TaskDeletedPayload,
@@ -13,8 +14,9 @@ interface ServerToClientEvents {
 	"task:created": (data: TaskCreatedPayload) => void;
 	"task:updated": (data: TaskUpdatedPayload) => void;
 	"task:deleted": (data: TaskDeletedPayload) => void;
-	"user:typing": (data: any) => void;
-	"user:typing-stop": (data: any) => void;
+	"message:new": (data: MessageNewPayload) => void;
+	"user:typing": (data: { projectId: number; userId: number }) => void;
+	"user:typing-stop": (data: { projectId: number; userId: number }) => void;
 	"presence:updated": (data: {
 		projectId: number;
 		userId: number;
@@ -25,15 +27,14 @@ interface ServerToClientEvents {
 }
 
 interface ClientToServerEvents {
-	"user:typing": (data: any) => void;
-	"user:typing-stop": (data: any) => void;
-	"message:send": (data: {
-		projectId: number;
-		senderId: number;
-		sender: number;
-		content: string;
-		clientId?: string;
-	}) => void;
+	// The server derives the typing user from the handshake and ignores any arg.
+	"user:typing": (data?: unknown) => void;
+	"user:typing-stop": (data?: unknown) => void;
+	// The server derives projectId/sender from the handshake — only content + clientId are sent.
+	"message:send": (
+		data: { content: string; clientId?: string },
+		ack?: (res: { ok: boolean; error?: string }) => void,
+	) => void;
 }
 
 type ProjectSocket = Socket<ServerToClientEvents, ClientToServerEvents>;

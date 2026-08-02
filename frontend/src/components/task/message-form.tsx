@@ -1,52 +1,98 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import {
 	Form,
 	FormControl,
 	FormField,
 	FormItem,
-	FormMessage,
 } from "~/components/ui/form";
+import { useDebounce } from "~/hooks/use-debounce";
+import { getProjectSocket } from "~/lib/socket";
 import { cn } from "~/lib/utils";
+import { messageKeys, type MessageListData } from "~/queries/use-messages";
+import { useAuthStore } from "~/stores/auth";
+import type { ChatMessage } from "~/types";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import { useProjectContext } from "../providers/project-slug-provider";
-import { getProjectSocket } from "~/lib/socket";
-import { useDebounce } from "~/hooks/use-debounce";
-import { useAuthStore } from "~/stores/auth";
 
-export function MessageForm() {
-	const { slug: projectId } = useProjectContext();
+interface MessageFormProps {
+	projectId: number;
+}
+
+export function MessageForm({ projectId }: MessageFormProps) {
+	const qc = useQueryClient();
 	const { user } = useAuthStore();
 	const [isFocused, setIsFocused] = useState<boolean>(false);
-	const form = useForm({
-		defaultValues: {
-			message: "",
-		},
-	});
-
+	const form = useForm({ defaultValues: { message: "" } });
 	const { debouncedFn } = useDebounce();
+	const isTyping = useRef<boolean>(false);
+
+	/** Flip a still-pending optimistic row to a failed state so the UI can flag it. */
+	const markFailed = (clientId: string) => {
+		qc.setQueryData<MessageListData>(messageKeys.lists(projectId), (old) => {
+			if (!old) return old;
+			return {
+				...old,
+				data: old.data.map((m) =>
+					m.clientId === clientId && m.pending
+						? { ...m, pending: false, failed: true }
+						: m,
+				),
+			};
+		});
+	};
 
 	const onSubmit = (data: { message: string }) => {
-		const socket = getProjectSocket(Number(projectId));
-		socket.emit("message:send", {
-			projectId: Number(projectId),
-			senderId: Number(user?.id),
-			sender: Number(user?.id),
-			content: data.message,
+		const content = data.message.trim();
+		if (!content || !user) return;
+
+		const socket = getProjectSocket(projectId);
+		const clientId = crypto.randomUUID();
+		const now = new Date().toISOString();
+
+		const optimistic: ChatMessage = {
+			id: -Date.now(),
+			project_id: projectId,
+			sender_id: user.id,
+			content,
+			is_edited: false,
+			created_at: now,
+			updated_at: now,
+			sender: { id: user.id, name: user.name, avatar: user.avatar },
+			clientId,
+			pending: true,
+		};
+
+		qc.setQueryData<MessageListData>(messageKeys.lists(projectId), (old) => ({
+			data: [...(old?.data ?? []), optimistic],
+			pagination: old?.pagination,
+		}));
+
+		socket.emit("message:send", { content, clientId }, (ack) => {
+			if (!ack?.ok) {
+				markFailed(clientId);
+				toast.error(ack?.error ?? "Failed to send message");
+			}
 		});
+
+		// Stop the typing indicator immediately on send.
+		socket.emit("user:typing-stop");
+		isTyping.current = false;
+
 		form.reset();
 		setIsFocused(false);
 	};
-	const isActive = isFocused || form.getValues("message").trim().length > 0;
-	const isTyping = useRef<boolean>(false);
 
 	const handleTypingStop = debouncedFn(() => {
-		if (!projectId) return;
 		const socket = getProjectSocket(projectId);
-		socket.emit("user:typing-stop", `${user?.name} stoped typing...`);
+		socket.emit("user:typing-stop");
 		isTyping.current = false;
 	}, 1000);
+
+	const value = form.watch("message");
+	const isActive = isFocused || value.trim().length > 0;
 
 	return (
 		<Form {...form}>
@@ -65,26 +111,23 @@ export function MessageForm() {
 									)}
 									onBlur={() => setIsFocused(false)}
 									onFocus={() => setIsFocused(true)}
-									onKeyDown={() => {
-										handleTypingStop(false);
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && !e.shiftKey) {
+											e.preventDefault();
+											form.handleSubmit(onSubmit)();
+											return;
+										}
+										handleTypingStop(undefined);
 										if (isTyping.current) return;
-										const socket = getProjectSocket(projectId);
-										socket.emit(
-											"user:typing",
-											`${user?.name} is typing...`,
-										);
+										getProjectSocket(projectId).emit("user:typing");
 										isTyping.current = true;
 									}}
 									{...field}
 								/>
 							</FormControl>
-							<FormMessage />
 						</FormItem>
 					)}
 				/>
-				{/* {isTyping && (
-					<p className="text-xs text-muted-foreground">Typing...</p>
-				)} */}
 				{isActive && (
 					<div className="flex justify-end gap-2 mt-2">
 						<Button
@@ -97,8 +140,11 @@ export function MessageForm() {
 							type="button">
 							Cancel
 						</Button>
-						<Button className="text-xs px-2 py-1 h-auto" type="submit">
-							Submit
+						<Button
+							className="text-xs px-2 py-1 h-auto"
+							type="submit"
+							disabled={!value.trim()}>
+							Send
 						</Button>
 					</div>
 				)}

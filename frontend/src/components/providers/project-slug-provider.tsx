@@ -15,6 +15,9 @@ type ProjectContextType = {
 	members?: ProjectMember[];
 	onlineUsers: OnlineUser[];
 	setOnlineUsers: React.Dispatch<React.SetStateAction<OnlineUser[]>>;
+	/** User ids currently typing in the project chat (excludes the current user). */
+	typingUsers: number[];
+	setTypingUsers: React.Dispatch<React.SetStateAction<number[]>>;
 };
 
 const ProjectContext = createContext<ProjectContextType | null>(null);
@@ -25,14 +28,27 @@ export const ProjectSlugProvider = ({
 	effectiveRole,
 	members,
 	children,
-}: Omit<ProjectContextType, "onlineUsers" | "setOnlineUsers"> & {
+}: Omit<
+	ProjectContextType,
+	"onlineUsers" | "setOnlineUsers" | "typingUsers" | "setTypingUsers"
+> & {
 	children: React.ReactNode;
 }) => {
 	const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+	const [typingUsers, setTypingUsers] = useState<number[]>([]);
 
 	return (
 		<ProjectContext.Provider
-			value={{ slug, project, effectiveRole, members, onlineUsers, setOnlineUsers }}>
+			value={{
+				slug,
+				project,
+				effectiveRole,
+				members,
+				onlineUsers,
+				setOnlineUsers,
+				typingUsers,
+				setTypingUsers,
+			}}>
 			{children}
 		</ProjectContext.Provider>
 	);
