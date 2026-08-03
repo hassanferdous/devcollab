@@ -4,6 +4,7 @@ import { usersTable } from "@/db/user.schema";
 import { Paginated } from "@/types";
 import {
 	and,
+	desc,
 	eq,
 	sql,
 	type InferInsertModel,
@@ -94,6 +95,7 @@ export const CommentServices = {
 					eq(commentsTable.task_id, taskId)
 				)
 			)
+			.orderBy(desc(commentsTable.created_at))
 			.$dynamic();
 
 		const data = (await withPagination(query, {
