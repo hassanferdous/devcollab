@@ -7,6 +7,7 @@ export interface Task {
   description: string | null
   status: TaskStatus
   priority: TaskPriority
+  position: number
   project_id: number
   created_by: number
   start_date: string | null
@@ -57,6 +58,10 @@ export interface UpdateTaskFormData {
 export interface TaskCreatedPayload extends Task {}
 export interface TaskUpdatedPayload extends Task {}
 export interface TaskDeletedPayload extends Task {}
+export interface TaskReorderedPayload {
+  status: TaskStatus
+  task_ids: number[]
+}
 export interface ProjectJoinedPayload {
   projectId: number
   userId: number

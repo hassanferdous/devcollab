@@ -7,7 +7,12 @@ import {
 } from "@tanstack/react-query";
 import { taskApi } from "~/lib/api/tasks";
 import { wait } from "~/lib/utils";
-import type { TaskActivity, TaskAssignee, UpdateTaskFormData } from "~/types";
+import type {
+	TaskActivity,
+	TaskAssignee,
+	TaskStatus,
+	UpdateTaskFormData,
+} from "~/types";
 
 export const taskKeys = {
 	all: ["tasks"] as const,
@@ -72,6 +77,19 @@ export function useUpdateTask(projectId: number) {
 				queryKey: taskKeys.activity(projectId, taskId),
 			});
 		},
+	});
+}
+
+export function useReorderTasks(projectId: number) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (data: {
+			status: TaskStatus;
+			task_ids: number[];
+			taskId: number;
+		}) => taskApi.reorder(projectId, data.taskId, data),
+		onSuccess: () =>
+			qc.invalidateQueries({ queryKey: taskKeys.lists(projectId) }),
 	});
 }
 

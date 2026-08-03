@@ -116,8 +116,8 @@ export const TaskServices = {
 			assignee_ids,
 			priority,
 			status,
-			sort = "created_at",
-			order = "desc"
+			sort = "position",
+			order = "asc"
 		}: TaskFilterSchema
 	): Promise<Paginated<Task>> => {
 		const filters: SQL[] = [eq(tasksTable.project_id, projectId)];
@@ -145,7 +145,10 @@ export const TaskServices = {
 		const orderBy: OrderByColumn[] = [
 			order === "asc"
 				? asc(tasksTable[sort as keyof Task])
-				: desc(tasksTable[sort as keyof Task])
+				: desc(tasksTable[sort as keyof Task]),
+			// Deterministic tiebreak so equal sort keys (e.g. position ties)
+			// keep a stable order across requests.
+			asc(tasksTable.id)
 		];
 
 		const query = db
@@ -215,6 +218,100 @@ export const TaskServices = {
 				}
 			});
 			nsp.to(`project:${updated.project_id}`).emit("task:updated", updated);
+			return updated;
+		});
+
+		return result;
+	},
+
+	/**
+	 * Persists the manual order of a single kanban column. Assigns
+	 * `position = index` to every listed task and sets its `status` to the
+	 * target column, so this one call covers both within-column sorting and
+	 * cross-column moves. Only tasks whose status actually changes get an
+	 * activity-log entry; a `task:reordered` event tells other clients to
+	 * refresh the column order.
+	 *
+	 * @param   {number} projectId - The owning project
+	 * @param   {Task["status"]} status - The target column
+	 * @param   {number[]} taskIds - Task ids in their new top-to-bottom order
+	 * @returns {Promise<Task[]>} The updated task rows
+	 */
+	reorder: async (
+		{
+			projectId,
+			status,
+			taskIds
+		}: {
+			projectId: number;
+			status: Task["status"];
+			taskIds: number[];
+		},
+		context: MemberAbilityContext,
+		nsp: Namespace
+	): Promise<Task[]> => {
+		const ability = defineAbilityFor(context);
+		if (!ability.can("update", "Task"))
+			throwError("Unauthorized", StatusCodes.UNAUTHORIZED);
+
+		if (!taskIds.length) return [];
+
+		const result = await db.transaction(async (tx) => {
+			// Load current rows (scoped to the project) to detect status changes.
+			const existing = await tx
+				.select()
+				.from(tasksTable)
+				.where(
+					and(
+						eq(tasksTable.project_id, projectId),
+						inArray(tasksTable.id, taskIds)
+					)
+				);
+			const byId = new Map(existing.map((t) => [t.id, t]));
+
+			const updated: Task[] = [];
+			for (let i = 0; i < taskIds.length; i++) {
+				const id = taskIds[i];
+				const old = byId.get(id);
+				if (!old) continue;
+
+				const [row] = await tx
+					.update(tasksTable)
+					.set({ position: i, status })
+					.where(
+						and(
+							eq(tasksTable.id, id),
+							eq(tasksTable.project_id, projectId)
+						)
+					)
+					.returning();
+				updated.push(row);
+
+				// Audit only genuine column changes, not pure re-sorts.
+				if (old.status !== status) {
+					await tx.insert(taskActivityLogTable).values({
+						task_id: row.id,
+						user_id: context.user_id,
+						action: "updated",
+						old_values: old,
+						new_values: {
+							title: row.title,
+							description: row.description,
+							status: row.status,
+							priority: row.priority,
+							project_id: row.project_id,
+							created_by: row.created_by,
+							start_date: row.start_date,
+							due_date: row.due_date
+						}
+					});
+				}
+			}
+
+			nsp.to(`project:${projectId}`).emit("task:reordered", {
+				status,
+				task_ids: taskIds
+			});
 			return updated;
 		});
 

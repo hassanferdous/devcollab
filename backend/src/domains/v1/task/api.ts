@@ -13,6 +13,7 @@ import {
 	createTaskSchema,
 	projectIdAndTaskIdSchema,
 	projectIdSchema,
+	reorderTasksSchema,
 	TaskFilterSchema,
 	taskFilterSchema,
 	updateTaskSchema
@@ -319,6 +320,77 @@ router.get(
 			data,
 			StatusCodes.OK
 		);
+	}
+);
+
+/**
+ * @swagger
+ * /api/v1/projects/{projectId}/tasks/{id}/reorder:
+ *   patch:
+ *     summary: Persist the manual order of a kanban column
+ *     description: >
+ *       Reassigns the `position` of every listed task (top-to-bottom) and sets
+ *       their `status` to the target column. Handles both within-column sorting
+ *       and cross-column moves. Access restricted to project members.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the project
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Unique identifier of the task
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status, task_ids]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, in_progress, completed]
+ *               task_ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Tasks reordered
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.patch(
+	"/:id/reorder",
+	auth,
+	validate({ params: projectIdAndTaskIdSchema, body: reorderTasksSchema }),
+	projectAccess("Task"),
+	async (req: Request, res: Response) => {
+		const context = getRequestContext(req);
+		const nsp = req.app.get("projectNsp") as Namespace;
+		const data = await TaskServices.reorder(
+			{
+				projectId: +req.params.projectId,
+				status: req.body.status,
+				taskIds: req.body.task_ids
+			},
+			context,
+			nsp
+		);
+		await redisClient.incr(`tasks:${req.params.projectId}:version`);
+		ApiResponse.success(res, "Tasks reordered!", data, StatusCodes.OK);
 	}
 );
 

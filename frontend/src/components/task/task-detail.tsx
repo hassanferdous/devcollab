@@ -9,7 +9,6 @@ import {
 	Circle,
 	Flag,
 	Image,
-	Loader2,
 	MessageSquare,
 	MoreHorizontal,
 	Paperclip,
@@ -124,10 +123,19 @@ function TaskAssigneePicker({
 }: TaskAssigneePickerProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
-	const { mutate: addAssignees, isPending: isAdding } = useAddAssignees(projectId, taskId);
-	const { mutate: removeAssignee, isPending: isRemoving } = useRemoveAssignee(projectId, taskId);
+	const { mutate: addAssignees, isPending: isAdding } = useAddAssignees(
+		projectId,
+		taskId,
+	);
+	const { mutate: removeAssignee, isPending: isRemoving } = useRemoveAssignee(
+		projectId,
+		taskId,
+	);
 
-	const assignedIds = useMemo(() => new Set(assignees.map((a) => a.user_id)), [assignees]);
+	const assignedIds = useMemo(
+		() => new Set(assignees.map((a) => a.user_id)),
+		[assignees],
+	);
 
 	const filtered = members.filter(
 		(m) =>
@@ -194,7 +202,9 @@ function TaskAssigneePicker({
 									</AvatarFallback>
 								</Avatar>
 								<div className="min-w-0 flex-1">
-									<p className="truncate text-xs font-medium">{m.name}</p>
+									<p className="truncate text-xs font-medium">
+										{m.name}
+									</p>
 								</div>
 								{assigned && (
 									<Check className="size-3.5 shrink-0 text-primary" />
@@ -276,15 +286,13 @@ export function TaskDetail({
 
 				{/* Top bar */}
 				<div className="flex items-center justify-between px-3 py-2.5 shrink-0 border-b border-border">
-					<Can
-						do="update"
-						on="Task"
-						passThrough>
+					<Can do="update" on="Task" passThrough>
 						{({ isAllowed }) => (
 							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
+								<DropdownMenuTrigger
+									disabled={!isAllowed || isUpdating}
+									asChild>
 									<button
-										disabled={!isAllowed || isUpdating}
 										className={cn(
 											"flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-70",
 											statusConfig[task.status].badgeCls,
@@ -321,9 +329,7 @@ export function TaskDetail({
 						<button className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
 							<Image className="size-4" />
 						</button>
-						<Can
-							do="update"
-							on="Task">
+						<Can do="update" on="Task">
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<button className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -383,22 +389,26 @@ export function TaskDetail({
 									{ icon: Paperclip, label: "Attachment" },
 								] as const
 							).map(({ icon: Icon, label }) => (
-								<Button key={label} variant="accent">
-									<Icon className="size-3.5" />
-									{label}
-								</Button>
+								<Can key={label} do="update" on="Task" passThrough>
+									{({ isAllowed }) => (
+										<Button
+											disabled={!isAllowed || isUpdating}
+											variant="accent">
+											<Icon className="size-3.5" />
+											{label}
+										</Button>
+									)}
+								</Can>
 							))}
 
 							{/* Start date pill */}
-							<Can
-								do="update"
-								on="Task"
-								passThrough>
+							<Can do="update" on="Task" passThrough>
 								{({ isAllowed }) => (
 									<Popover>
-										<PopoverTrigger asChild>
+										<PopoverTrigger
+											disabled={!isAllowed || isUpdating}
+											asChild>
 											<button
-												disabled={!isAllowed || isUpdating}
 												className={cn(
 													"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
 													dateRange?.from
@@ -429,9 +439,10 @@ export function TaskDetail({
 												)}
 											</button>
 										</PopoverTrigger>
-										<PopoverTrigger asChild>
+										<PopoverTrigger
+											disabled={!isAllowed || isUpdating}
+											asChild>
 											<button
-												disabled={!isAllowed || isUpdating}
 												className={cn(
 													"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
 													dateRange?.to
@@ -501,15 +512,13 @@ export function TaskDetail({
 							</Can>
 
 							{/* Priority pill – DropdownMenu */}
-							<Can
-								do="update"
-								on="Task"
-								passThrough>
+							<Can do="update" on="Task" passThrough>
 								{({ isAllowed }) => (
 									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
+										<DropdownMenuTrigger
+											disabled={!isAllowed || isUpdating}
+											asChild>
 											<button
-												disabled={!isAllowed || isUpdating}
 												className={cn(
 													"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
 													priorityConfig[task.priority].pill,
@@ -538,10 +547,7 @@ export function TaskDetail({
 													priorityConfig,
 												) as TaskPriority[]
 											).map((p) => (
-												<Can
-													do="update"
-													on="Task"
-													passThrough>
+												<Can do="update" on="Task" passThrough>
 													{({ isAllowed }) => (
 														<DropdownMenuItem
 															key={p}
@@ -610,10 +616,7 @@ export function TaskDetail({
 										</Avatar>
 									</div>
 								))}
-								<Can
-									do="update"
-									on="Task"
-									passThrough>
+								<Can do="update" on="Task" passThrough>
 									{({ isAllowed }) => (
 										<TaskAssigneePicker
 											projectId={projectId}
@@ -636,9 +639,7 @@ export function TaskDetail({
 										Description
 									</span>
 								</div>
-								<Can
-									do="update"
-									on="Task">
+								<Can do="update" on="Task">
 									<button
 										onClick={() => setEditingDescription(true)}
 										className="rounded-md px-3 py-1 text-xs text-muted-foreground bg-muted hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -659,7 +660,7 @@ export function TaskDetail({
 											rows={4}
 											className="resize-none text-sm min-h-16"
 										/>
-										<div className="flex gap-2">
+										<div className="flex justify-end gap-2">
 											<Button
 												size="sm"
 												onClick={saveDescription}
@@ -676,10 +677,7 @@ export function TaskDetail({
 										</div>
 									</div>
 								) : (
-									<Can
-										do="update"
-										on="Task"
-										passThrough>
+									<Can do="update" on="Task" passThrough>
 										{({ isAllowed }) => (
 											<div
 												onClick={() =>

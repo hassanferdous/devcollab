@@ -2,12 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-} from "~/components/ui/form";
+import { Form, FormControl, FormField, FormItem } from "~/components/ui/form";
 import { useDebounce } from "~/hooks/use-debounce";
 import { getProjectSocket } from "~/lib/socket";
 import { extractMentionedIds } from "~/lib/parse-mentions";
@@ -19,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { useProjectContext } from "../providers/project-slug-provider";
+import { useAbility } from "@casl/react";
 
 interface CommentFormProps {
 	projectId: number;
@@ -193,6 +189,8 @@ export function CommentForm({
 	const value = form.watch("comment");
 	const isActive = isFocused || value.trim().length > 0;
 
+	const canComment = useAbility().can("update", "Task");
+
 	return (
 		<Form {...form}>
 			<form onSubmit={form.handleSubmit(onSubmit)}>
@@ -206,6 +204,7 @@ export function CommentForm({
 								<FormControl>
 									<Textarea
 										{...field}
+										disabled={!canComment}
 										ref={(el) => {
 											ref(el);
 											taRef.current = el;
@@ -260,7 +259,9 @@ export function CommentForm({
 											}
 											handleTypingStop(undefined);
 											if (isTyping.current) return;
-											getProjectSocket(projectId).emit("user:typing");
+											getProjectSocket(projectId).emit(
+												"user:typing",
+											);
 											isTyping.current = true;
 										}}
 										onKeyUp={(e) =>
@@ -317,7 +318,7 @@ export function CommentForm({
 
 				{/* Save button appears once the composer is engaged */}
 				{isActive && (
-					<div className="mt-2">
+					<div className="mt-2 flex justify-end gap-2">
 						<Button
 							className="h-auto px-3 py-1.5 text-xs"
 							type="submit"

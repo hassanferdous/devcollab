@@ -18,6 +18,13 @@ export const addAssigneesSchema = z.object({
 
 export const updateTaskSchema = createTaskSchema.partial();
 
+export const reorderTasksSchema = z.object({
+	status: z.enum(["pending", "in_progress", "completed"]),
+	task_ids: z.array(z.coerce.number().int().positive())
+});
+
+export type ReorderTasksSchema = z.infer<typeof reorderTasksSchema>;
+
 export const projectIdSchema = z.object({
 	projectId: z.coerce.number("ProjectId is required").int().positive()
 });
@@ -38,10 +45,10 @@ export const taskFilterSchema = paginationSchema.extend({
 	priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
 	assignee_ids: z.array(z.coerce.number().int().positive()).optional(),
 	sort: z
-		.enum(["created_at", "updated_at", "due_date"])
+		.enum(["position", "created_at", "updated_at", "due_date"])
 		.optional()
-		.default("created_at"),
-	order: z.enum(["asc", "desc"]).optional().default("desc")
+		.default("position"),
+	order: z.enum(["asc", "desc"]).optional().default("asc")
 });
 
 export type TaskFilterSchema = z.infer<typeof taskFilterSchema>;

@@ -8,6 +8,13 @@
       "when": 1785735644094,
       "tag": "0000_green_doorman",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785766600072,
+      "tag": "0001_add_task_position",
+      "breakpoints": true
     }
   ]
 }

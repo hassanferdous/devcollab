@@ -33,6 +33,8 @@ export const tasksTable = pgTable(
 		description: text(),
 		status: taskStatusEnum().default("pending").notNull(),
 		priority: taskPriorityEnum().default("low").notNull(),
+		// Manual sort order within a (project, status) column, ascending.
+		position: integer().default(0).notNull(),
 		project_id: integer()
 			.notNull()
 			.references(() => projectsTable.id, {
@@ -53,6 +55,11 @@ export const tasksTable = pgTable(
 			table.created_at
 		),
 		index("idx_tasks_project_id_status").on(table.project_id, table.status),
+		index("idx_tasks_project_id_status_position").on(
+			table.project_id,
+			table.status,
+			table.position
+		),
 		index("idx_tasks_created_by").on(table.created_by)
 	]
 );

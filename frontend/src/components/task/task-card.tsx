@@ -1,3 +1,4 @@
+import { useAbility } from "@casl/react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { VariantProps } from "class-variance-authority";
@@ -6,9 +7,8 @@ import { Calendar } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { cn } from "~/lib/utils";
 import type { Task, TaskPriority } from "~/types";
-import { Badge, badgeVariants } from "../ui/badge";
 import { useProjectContext } from "../providers/project-slug-provider";
-import { useAbility } from "@casl/react";
+import { Badge, badgeVariants } from "../ui/badge";
 
 const priorityConfig: Record<
 	string,
@@ -80,9 +80,8 @@ export function TaskCard({ task, onOpen, index }: TaskCardProps) {
 		zIndex: isDragging ? 999 : undefined,
 	};
 
-	const can =
-		useAbility<import("~/components/project/project-ability").AppAbility>();
-	const canEdit = can.can("update", "Task");
+	const ability = useAbility();
+	const canEdit = ability.can("update", "Task");
 
 	const priority = priorityConfig[task.priority] ?? priorityConfig.low;
 	const assignee = members?.find((m) => m.user_id === task.created_by);

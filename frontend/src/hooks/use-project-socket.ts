@@ -59,6 +59,12 @@ export function useProjectSocket(projectId: number) {
 			});
 		});
 
+		socket.on("task:reordered", () => {
+			// Order lives in the server's returned sequence, so just refetch the
+			// list to pick up the new positions.
+			qc.invalidateQueries({ queryKey: taskKeys.lists(projectId) });
+		});
+
 		socket.on("task:deleted", (task: TaskDeletedPayload) => {
 			qc.setQueryData<{ data: Task[]; pagination: unknown }>(
 				taskKeys.lists(projectId),
@@ -112,6 +118,7 @@ export function useProjectSocket(projectId: number) {
 			socket.off("project:joined");
 			socket.off("task:created");
 			socket.off("task:updated");
+			socket.off("task:reordered");
 			socket.off("task:deleted");
 			socket.off("comment:new");
 			socket.off("user:typing");

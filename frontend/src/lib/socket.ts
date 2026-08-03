@@ -5,6 +5,7 @@ import type {
 	ProjectJoinedPayload,
 	TaskCreatedPayload,
 	TaskDeletedPayload,
+	TaskReorderedPayload,
 	TaskUpdatedPayload,
 } from "~/types";
 
@@ -14,6 +15,7 @@ interface ServerToClientEvents {
 	"project:joined": (data: ProjectJoinedPayload) => void;
 	"task:created": (data: TaskCreatedPayload) => void;
 	"task:updated": (data: TaskUpdatedPayload) => void;
+	"task:reordered": (data: TaskReorderedPayload) => void;
 	"task:deleted": (data: TaskDeletedPayload) => void;
 	"comment:new": (data: CommentNewPayload) => void;
 	"user:typing": (data: { projectId: number; userId: number }) => void;

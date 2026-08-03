@@ -23,6 +23,12 @@ export const taskApi = {
 		}>,
 	) => api.patch(`/projects/${projectId}/tasks/${taskId}`, data),
 
+	reorder: (
+		projectId: number,
+		taskId: number,
+		data: { status: string; task_ids: number[] },
+	) => api.patch(`/projects/${projectId}/tasks/${taskId}/reorder`, data),
+
 	delete: (projectId: number, taskId: number) =>
 		api.delete(`/projects/${projectId}/tasks/${taskId}`),
 
@@ -33,7 +39,9 @@ export const taskApi = {
 		api.get(`/projects/${projectId}/tasks/${taskId}/activity`),
 
 	addAssignees: (projectId: number, taskId: number, userIds: number[]) =>
-		api.post(`/projects/${projectId}/tasks/${taskId}/assignees`, { user_ids: userIds }),
+		api.post(`/projects/${projectId}/tasks/${taskId}/assignees`, {
+			user_ids: userIds,
+		}),
 
 	removeAssignee: (projectId: number, taskId: number, userId: number) =>
 		api.delete(`/projects/${projectId}/tasks/${taskId}/assignees/${userId}`),

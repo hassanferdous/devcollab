@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import {
 	useCreateTask,
 	useDeleteTask,
+	useReorderTasks,
 	useUpdateTask,
 } from "~/queries/use-tasks";
 import { useProjectSocket } from "~/hooks/use-project-socket";
@@ -56,6 +57,7 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
 	const { mutate: updateTask, isPending: isUpdating } =
 		useUpdateTask(projectId);
 	const { mutate: deleteTask } = useDeleteTask(projectId);
+	const { mutate: reorderTasks } = useReorderTasks(projectId);
 
 	const sensors = useSensors(
 		useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -109,43 +111,52 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
 		const activeTask = tasks.find((t) => t.id === activeTaskId);
 		if (!activeTask) return;
 
+		// handleDragOver has already moved the task into its target column
+		// (status) in local state, so read the destination from there.
+		const targetStatus = activeTask.status;
 		const originalStatus = initialTasks.find(
 			(t) => t.id === activeTaskId,
 		)?.status;
+		const movedColumns = targetStatus !== originalStatus;
 
-		// Cross-column move: persist whenever the status changed, regardless of
-		// what over.id resolved to (dnd-kit can resolve it to the active item
-		// itself after the optimistic move in handleDragOver).
-		if (activeTask.status !== originalStatus) {
-			updateTask(
-				{ taskId: activeTaskId, data: { status: activeTask.status } },
-				{
-					onError: () => {
-						setTasks(initialTasks);
-						toast.error("Failed to move task");
-					},
+		// Current (optimistic) order of the destination column.
+		const column = tasks.filter((t) => t.status === targetStatus);
+		const oldIndex = column.findIndex((t) => t.id === activeTaskId);
+		// over.id is a card id when dropped on the list, or the column's status
+		// string when dropped on empty space (→ -1, keep current slot / append).
+		const newIndex =
+			active.id === over.id
+				? oldIndex
+				: column.findIndex((t) => t.id === over.id);
+
+		// Nothing to persist: same column and same slot.
+		if (!movedColumns && (newIndex === -1 || newIndex === oldIndex)) return;
+
+		const ordered =
+			newIndex !== -1 && newIndex !== oldIndex
+				? arrayMove(column, oldIndex, newIndex)
+				: column;
+
+		// Optimistically apply the new column order.
+		setTasks((prev) => {
+			const others = prev.filter((t) => t.status !== targetStatus);
+			return [...others, ...ordered];
+		});
+
+		// One call persists both status (cross-column) and position (sorting).
+		reorderTasks(
+			{
+				status: targetStatus,
+				task_ids: ordered.map((t) => t.id),
+				taskId: activeTaskId,
+			},
+			{
+				onError: () => {
+					setTasks(initialTasks);
+					toast.error("Failed to move task");
 				},
-			);
-			return;
-		}
-
-		// Same-column reorder only.
-		if (active.id === over.id) return;
-		const overColumn = getColumnForId(over.id);
-		if (overColumn === activeTask.status) {
-			const column = tasksByStatus[activeTask.status];
-			const oldIndex = column.findIndex((t) => t.id === activeTaskId);
-			const newIndex = column.findIndex((t) => t.id === over.id);
-			if (oldIndex !== newIndex && newIndex !== -1) {
-				const reordered = arrayMove(column, oldIndex, newIndex);
-				setTasks((prev) => {
-					const others = prev.filter(
-						(t) => t.status !== activeTask.status,
-					);
-					return [...others, ...reordered];
-				});
-			}
-		}
+			},
+		);
 	};
 
 	const handleCreateTask =
