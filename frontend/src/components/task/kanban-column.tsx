@@ -62,6 +62,8 @@ export function KanbanColumn({
 		setCreateOpen(false);
 	};
 
+	console.log({ isOver });
+
 	return (
 		<div
 			ref={setNodeRef}
@@ -115,11 +117,12 @@ export function KanbanColumn({
 					items={tasks.map((t) => t.id)}
 					strategy={verticalListSortingStrategy}>
 					<div className="flex flex-col gap-2">
-						{tasks.map((task) => (
+						{tasks.map((task, index) => (
 							<TaskCard
 								key={task.id}
 								task={task}
 								onOpen={() => onOpenTask(task.id)}
+								index={index}
 							/>
 						))}
 						{tasks.length === 0 && (

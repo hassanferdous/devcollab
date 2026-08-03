@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { taskApi } from "~/lib/api/tasks";
 import { wait } from "~/lib/utils";
-import type { TaskAssignee, UpdateTaskFormData } from "~/types";
+import type { TaskActivity, TaskAssignee, UpdateTaskFormData } from "~/types";
 
 export const taskKeys = {
 	all: ["tasks"] as const,
@@ -16,6 +16,8 @@ export const taskKeys = {
 		[...taskKeys.all, "detail", projectId, taskId] as const,
 	assignees: (projectId: number, taskId: number) =>
 		[...taskKeys.all, "assignees", projectId, taskId] as const,
+	activity: (projectId: number, taskId: number) =>
+		[...taskKeys.all, "activity", projectId, taskId] as const,
 };
 
 export const tasksQueryOptions = (projectId: number) =>
@@ -66,6 +68,9 @@ export function useUpdateTask(projectId: number) {
 		onSuccess: (_, { taskId }) => {
 			qc.invalidateQueries({ queryKey: taskKeys.lists(projectId) });
 			qc.invalidateQueries({ queryKey: taskKeys.detail(projectId, taskId) });
+			qc.invalidateQueries({
+				queryKey: taskKeys.activity(projectId, taskId),
+			});
 		},
 	});
 }
@@ -90,6 +95,21 @@ export function useTaskAssignees(
 			taskApi
 				.getAssignees(projectId, taskId)
 				.then((r) => r.data.data as TaskAssignee[]),
+		enabled: enabled && !!projectId && !!taskId,
+	});
+}
+
+export function useTaskActivity(
+	projectId: number,
+	taskId: number,
+	enabled = true,
+) {
+	return useQuery({
+		queryKey: taskKeys.activity(projectId, taskId),
+		queryFn: () =>
+			taskApi
+				.getActivity(projectId, taskId)
+				.then((r) => r.data.data as TaskActivity[]),
 		enabled: enabled && !!projectId && !!taskId,
 	});
 }

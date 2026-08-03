@@ -29,6 +29,9 @@ export const taskApi = {
 	getAssignees: (projectId: number, taskId: number) =>
 		api.get(`/projects/${projectId}/tasks/${taskId}/assignees`),
 
+	getActivity: (projectId: number, taskId: number) =>
+		api.get(`/projects/${projectId}/tasks/${taskId}/activity`),
+
 	addAssignees: (projectId: number, taskId: number, userIds: number[]) =>
 		api.post(`/projects/${projectId}/tasks/${taskId}/assignees`, { user_ids: userIds }),
 

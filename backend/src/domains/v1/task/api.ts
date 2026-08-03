@@ -393,6 +393,45 @@ router.get(
 
 /**
  * @swagger
+ * /api/v1/projects/{projectId}/tasks/{id}/activity:
+ *   get:
+ *     summary: Retrieve a task's activity log (newest first)
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Activity log fetched }
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
+ */
+router.get(
+	"/:id/activity",
+	auth,
+	validate({ params: projectIdAndTaskIdSchema }),
+	projectAccess("Task"),
+	async (req: Request, res: Response) => {
+		const data = await TaskServices.getActivity(+req.params.id);
+		ApiResponse.success(
+			res,
+			"Successfully fetched activity!",
+			data,
+			StatusCodes.OK
+		);
+	}
+);
+
+/**
+ * @swagger
  * /api/v1/projects/{projectId}/tasks/{id}:
  *   patch:
  *     summary: Update an existing task record by ID

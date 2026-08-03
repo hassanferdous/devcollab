@@ -33,6 +33,10 @@ export interface TaskActivityLog {
   created_at: string
 }
 
+export interface TaskActivity extends TaskActivityLog {
+  actor: { id: number; name: string | null; avatar: string | null } | null
+}
+
 export interface CreateTaskFormData {
   title: string
   description: string

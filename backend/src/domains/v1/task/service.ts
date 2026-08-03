@@ -35,6 +35,11 @@ export type TaskAssignee = {
 export type Task = InferSelectModel<typeof tasksTable>;
 export type NewTask = InferInsertModel<typeof tasksTable>;
 
+/** An activity-log row enriched with the acting user's public profile. */
+export type TaskActivity = InferSelectModel<typeof taskActivityLogTable> & {
+	actor: { id: number; name: string | null; avatar: string | null } | null;
+};
+
 export const TaskServices = {
 	/**
 	 * Persists a new task record to the database
@@ -195,7 +200,7 @@ export const TaskServices = {
 				.returning();
 			await tx.insert(taskActivityLogTable).values({
 				task_id: updated.id,
-				user_id: updated.created_by,
+				user_id: context.user_id,
 				action: "updated",
 				old_values: oldTask,
 				new_values: {
@@ -228,6 +233,39 @@ export const TaskServices = {
 			.from(taskMembersTable)
 			.innerJoin(usersTable, eq(taskMembersTable.user_id, usersTable.id))
 			.where(eq(taskMembersTable.task_id, taskId));
+	},
+
+	/**
+	 * Returns a task's activity log, newest first, each row enriched with the
+	 * acting user's public profile. Powers the "Comments and activity" feed.
+	 *
+	 * @param   {number} taskId - The owning task (card)
+	 * @returns {Promise<TaskActivity[]>}
+	 */
+	getActivity: async (taskId: number): Promise<TaskActivity[]> => {
+		const rows = await db
+			.select({
+				id: taskActivityLogTable.id,
+				task_id: taskActivityLogTable.task_id,
+				user_id: taskActivityLogTable.user_id,
+				action: taskActivityLogTable.action,
+				old_values: taskActivityLogTable.old_values,
+				new_values: taskActivityLogTable.new_values,
+				created_at: taskActivityLogTable.created_at,
+				updated_at: taskActivityLogTable.updated_at,
+				deleted_at: taskActivityLogTable.deleted_at,
+				actor: {
+					id: usersTable.id,
+					name: usersTable.name,
+					avatar: usersTable.avatar
+				}
+			})
+			.from(taskActivityLogTable)
+			.leftJoin(usersTable, eq(taskActivityLogTable.user_id, usersTable.id))
+			.where(eq(taskActivityLogTable.task_id, taskId))
+			.orderBy(desc(taskActivityLogTable.created_at))
+			.limit(50);
+		return rows as TaskActivity[];
 	},
 
 	addAssignees: async (taskId: number, userIds: number[]): Promise<void> => {
@@ -269,7 +307,7 @@ export const TaskServices = {
 			// so the audit entry survives with the full snapshot in old_values.
 			await tx.insert(taskActivityLogTable).values({
 				task_id: taskId,
-				user_id: oldTask.created_by,
+				user_id: context.user_id,
 				action: "deleted",
 				old_values: oldTask
 			});

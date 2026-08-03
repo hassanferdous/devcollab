@@ -111,11 +111,12 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
 
 		const overColumn = getColumnForId(over.id);
 		if (!overColumn) return;
+		// console.log("dropped", overColumn);
 
 		const originalStatus = initialTasks.find(
 			(t) => t.id === activeTaskId,
 		)?.status;
-
+		console.log({ originalStatus, overColumn });
 		if (activeTask.status !== originalStatus) {
 			updateTask(
 				{ taskId: activeTaskId, data: { status: activeTask.status } },

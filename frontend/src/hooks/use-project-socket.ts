@@ -37,6 +37,9 @@ export function useProjectSocket(projectId: number) {
 					return { ...old, data: [...old.data, task] };
 				},
 			);
+			qc.invalidateQueries({
+				queryKey: taskKeys.activity(projectId, task.id),
+			});
 		});
 
 		socket.on("task:updated", (task: TaskUpdatedPayload) => {
@@ -51,6 +54,9 @@ export function useProjectSocket(projectId: number) {
 				},
 			);
 			qc.setQueryData(taskKeys.detail(projectId, task.id), task);
+			qc.invalidateQueries({
+				queryKey: taskKeys.activity(projectId, task.id),
+			});
 		});
 
 		socket.on("task:deleted", (task: TaskDeletedPayload) => {

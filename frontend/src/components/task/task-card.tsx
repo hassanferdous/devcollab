@@ -5,7 +5,7 @@ import { format, isPast } from "date-fns";
 import { Calendar } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { cn } from "~/lib/utils";
-import type { ProjectMember, Task, TaskPriority } from "~/types";
+import type { Task, TaskPriority } from "~/types";
 import { Badge, badgeVariants } from "../ui/badge";
 import { useProjectContext } from "../providers/project-slug-provider";
 import { useAbility } from "@casl/react";
@@ -60,9 +60,10 @@ function getInitials(name: string | null | undefined) {
 interface TaskCardProps {
 	task: Task;
 	onOpen: () => void;
+	index?: number;
 }
 
-export function TaskCard({ task, onOpen }: TaskCardProps) {
+export function TaskCard({ task, onOpen, index }: TaskCardProps) {
 	const { members } = useProjectContext();
 	const {
 		attributes,
@@ -79,7 +80,8 @@ export function TaskCard({ task, onOpen }: TaskCardProps) {
 		zIndex: isDragging ? 999 : undefined,
 	};
 
-	const can = useAbility<import("~/components/project/project-ability").AppAbility>();
+	const can =
+		useAbility<import("~/components/project/project-ability").AppAbility>();
 	const canEdit = can.can("update", "Task");
 
 	const priority = priorityConfig[task.priority] ?? priorityConfig.low;

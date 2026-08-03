@@ -1,7 +1,6 @@
 import auth from "@/middlewares/auth";
 import {
 	forgotPasswordLimiter,
-	loginLimiter,
 	otpLimiter,
 	refreshTokenLimiter,
 	registerLimiter,
@@ -106,7 +105,7 @@ const router = express.Router();
  */
 router.post(
 	"/login",
-	loginLimiter,
+	// loginLimiter,
 	validate({ body: loginSchema }),
 	AuthServices.callback_credential
 );
