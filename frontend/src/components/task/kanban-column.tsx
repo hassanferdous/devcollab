@@ -62,8 +62,6 @@ export function KanbanColumn({
 		setCreateOpen(false);
 	};
 
-	console.log({ isOver });
-
 	return (
 		<div
 			ref={setNodeRef}

@@ -103,20 +103,19 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
 		const { active, over } = event;
 		setActiveTask(null);
 
-		if (!over || active.id === over.id) return;
+		if (!over) return;
 
 		const activeTaskId = active.id as number;
 		const activeTask = tasks.find((t) => t.id === activeTaskId);
 		if (!activeTask) return;
 
-		const overColumn = getColumnForId(over.id);
-		if (!overColumn) return;
-		// console.log("dropped", overColumn);
-
 		const originalStatus = initialTasks.find(
 			(t) => t.id === activeTaskId,
 		)?.status;
-		console.log({ originalStatus, overColumn });
+
+		// Cross-column move: persist whenever the status changed, regardless of
+		// what over.id resolved to (dnd-kit can resolve it to the active item
+		// itself after the optimistic move in handleDragOver).
 		if (activeTask.status !== originalStatus) {
 			updateTask(
 				{ taskId: activeTaskId, data: { status: activeTask.status } },
@@ -127,7 +126,13 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
 					},
 				},
 			);
-		} else if (overColumn === activeTask.status) {
+			return;
+		}
+
+		// Same-column reorder only.
+		if (active.id === over.id) return;
+		const overColumn = getColumnForId(over.id);
+		if (overColumn === activeTask.status) {
 			const column = tasksByStatus[activeTask.status];
 			const oldIndex = column.findIndex((t) => t.id === activeTaskId);
 			const newIndex = column.findIndex((t) => t.id === over.id);
