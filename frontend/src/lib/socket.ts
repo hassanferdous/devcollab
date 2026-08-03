@@ -1,6 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 import type {
-	MessageNewPayload,
+	CommentNewPayload,
+	NotificationNewPayload,
 	ProjectJoinedPayload,
 	TaskCreatedPayload,
 	TaskDeletedPayload,
@@ -14,7 +15,7 @@ interface ServerToClientEvents {
 	"task:created": (data: TaskCreatedPayload) => void;
 	"task:updated": (data: TaskUpdatedPayload) => void;
 	"task:deleted": (data: TaskDeletedPayload) => void;
-	"message:new": (data: MessageNewPayload) => void;
+	"comment:new": (data: CommentNewPayload) => void;
 	"user:typing": (data: { projectId: number; userId: number }) => void;
 	"user:typing-stop": (data: { projectId: number; userId: number }) => void;
 	"presence:updated": (data: {
@@ -30,9 +31,14 @@ interface ClientToServerEvents {
 	// The server derives the typing user from the handshake and ignores any arg.
 	"user:typing": (data?: unknown) => void;
 	"user:typing-stop": (data?: unknown) => void;
-	// The server derives projectId/sender from the handshake — only content + clientId are sent.
-	"message:send": (
-		data: { content: string; clientId?: string },
+	// The server derives projectId/sender from the handshake — client sends the rest.
+	"comment:create": (
+		data: {
+			taskId: number;
+			content: string;
+			clientId?: string;
+			mentionedUserIds: number[];
+		},
 		ack?: (res: { ok: boolean; error?: string }) => void,
 	) => void;
 }
@@ -71,4 +77,35 @@ export function disconnectSocket(projectId?: number) {
 export function getSocket(projectId?: number): ProjectSocket | null {
 	const key = projectId;
 	return socketMap.get(key) ?? null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Notifications — a single global, per-user socket on `/notifications` */
+/* ------------------------------------------------------------------ */
+
+interface NotificationServerToClient {
+	"notification:new": (data: NotificationNewPayload) => void;
+}
+
+type NotificationSocket = Socket<NotificationServerToClient>;
+let notificationSocket: NotificationSocket | null = null;
+
+/** Pooled connection to the global `/notifications` namespace (cookie-authed, no projectId). */
+export function getUserSocket(): NotificationSocket {
+	if (notificationSocket?.connected) return notificationSocket;
+	if (notificationSocket) return notificationSocket;
+
+	notificationSocket = io(`${SOCKET_URL}/notifications`, {
+		transports: ["websocket", "polling"],
+		autoConnect: true,
+		withCredentials: true,
+	});
+	return notificationSocket;
+}
+
+export function disconnectUserSocket() {
+	if (notificationSocket) {
+		notificationSocket.disconnect();
+		notificationSocket = null;
+	}
 }

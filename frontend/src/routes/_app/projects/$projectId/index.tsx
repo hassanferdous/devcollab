@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MessageSquare, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { Suspense, useState } from "react";
 import { AppHeader } from "~/components/layout/app-header";
 import { ProjectAbilityProvider } from "~/components/project/project-ability";
-import { ProjectChat } from "~/components/project/project-chat";
 import { ProjectMembers } from "~/components/project/project-members";
 import {
 	ProjectSlugProvider,
@@ -189,7 +188,6 @@ function ProjectDetailPage() {
 	const { projectId } = Route.useParams();
 	const id = parseInt(projectId);
 	const [membersOpen, setMembersOpen] = useState(false);
-	const [chatOpen, setChatOpen] = useState(false);
 
 	const { data: project, isSuccess } = useProjectSuspense(id);
 	const { user } = useAuthStore();
@@ -212,23 +210,6 @@ function ProjectDetailPage() {
 					actions={
 						<>
 							<OnlineAvatars />
-							<Sheet open={chatOpen} onOpenChange={setChatOpen}>
-								<SheetTrigger asChild>
-									<Button variant="outline" size="sm">
-										<MessageSquare className="size-4" />
-										Chat
-									</Button>
-								</SheetTrigger>
-								<SheetContent className="w-full sm:w-[440px] p-0 gap-0 flex flex-col">
-									<SheetHeader className="border-b border-border px-4 py-3">
-										<SheetTitle>Project chat</SheetTitle>
-									</SheetHeader>
-									<ProjectChat
-										projectId={id}
-										className="min-h-0 flex-1"
-									/>
-								</SheetContent>
-							</Sheet>
 							<Sheet open={membersOpen} onOpenChange={setMembersOpen}>
 								<SheetTrigger asChild>
 									<Button variant="outline" size="sm">

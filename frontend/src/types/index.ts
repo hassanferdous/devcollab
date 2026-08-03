@@ -1,5 +1,6 @@
 export * from './auth'
+export * from './comment'
 export * from './common'
-export * from './message'
+export * from './notification'
 export * from './project'
 export * from './task'

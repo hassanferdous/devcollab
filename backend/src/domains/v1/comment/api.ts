@@ -5,11 +5,11 @@ import { ApiResponse } from "@/utils/response";
 import type { Request, Response } from "express";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
-import { ChatServices } from "./service";
+import { CommentServices } from "./service";
 import {
-	messageHistorySchema,
-	MessageHistorySchema,
-	projectIdSchema
+	commentHistorySchema,
+	CommentHistorySchema,
+	taskIdParamsSchema
 } from "./validation";
 
 const router = express.Router({
@@ -20,7 +20,7 @@ const router = express.Router({
  * @swagger
  * components:
  *   schemas:
- *     Message:
+ *     Comment:
  *       type: object
  *       properties:
  *         id:
@@ -29,12 +29,20 @@ const router = express.Router({
  *         project_id:
  *           type: integer
  *           example: 2
+ *         task_id:
+ *           type: integer
+ *           example: 5
  *         sender_id:
  *           type: integer
  *           example: 1
  *         content:
  *           type: string
- *           example: Hey team, standup in 5!
+ *           example: "Nice work @[Alice Smith](3)!"
+ *         mentioned_user_ids:
+ *           type: array
+ *           items:
+ *             type: integer
+ *           example: [3]
  *         is_edited:
  *           type: boolean
  *           example: false
@@ -62,15 +70,15 @@ const router = express.Router({
 
 /**
  * @swagger
- * /api/v1/projects/{projectId}/chat/messages:
+ * /api/v1/projects/{projectId}/tasks/{taskId}/comments:
  *   get:
- *     summary: Retrieve a project's chat history
+ *     summary: Retrieve a task's comment history
  *     description: >
- *       Returns a paginated slice of the project's chat messages, newest first,
- *       each enriched with its sender's public profile. Access restricted to
- *       project members. Live messages arrive over Socket.io (`message:new`);
- *       this endpoint backfills history on load.
- *     tags: [Chat]
+ *       Returns a paginated slice of a card's comments, newest first, each
+ *       enriched with its sender's public profile. Access restricted to project
+ *       members. Live comments arrive over Socket.io (`comment:new`); this
+ *       endpoint backfills history on load.
+ *     tags: [Comments]
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
@@ -80,65 +88,47 @@ const router = express.Router({
  *         required: true
  *         schema:
  *           type: integer
- *         description: Unique identifier of the project
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: page
  *         required: false
  *         schema:
  *           type: integer
  *           minimum: 1
- *         description: Page number (1-based).
  *       - in: query
  *         name: limit
  *         required: false
  *         schema:
  *           type: integer
  *           minimum: 1
- *         description: Page size (default 15).
  *     responses:
  *       200:
- *         description: Successfully fetched chat history
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 statusCode:
- *                   type: integer
- *                   example: 200
- *                 message:
- *                   type: string
- *                   example: Successfully fetched chat history!
- *                 data:
- *                   type: object
- *                   properties:
- *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Message'
- *                     pagination:
- *                       type: object
- *                       nullable: true
+ *         description: Successfully fetched comment history
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden
  */
 router.get(
-	"/messages",
+	"/",
 	auth,
-	validate({ params: projectIdSchema, query: messageHistorySchema }),
-	projectAccess("Message"),
+	validate({ params: taskIdParamsSchema, query: commentHistorySchema }),
+	projectAccess("Comment"),
 	async (req: Request, res: Response) => {
 		const projectId = +req.params.projectId;
-		const { page, limit } = req.query as unknown as MessageHistorySchema;
-		const data = await ChatServices.getHistory(projectId, { page, limit });
+		const taskId = +req.params.taskId;
+		const { page, limit } = req.query as unknown as CommentHistorySchema;
+		const data = await CommentServices.getHistory(projectId, taskId, {
+			page,
+			limit
+		});
 		ApiResponse.success(
 			res,
-			"Successfully fetched chat history!",
+			"Successfully fetched comments!",
 			data,
 			StatusCodes.OK
 		);

@@ -2,8 +2,10 @@ import { User } from "@/domains/v1/user/service";
 import { Namespace, Server, Socket } from "socket.io";
 import { BaseNamespace } from "./base.nsp";
 import { socketAuthMiddleware } from "./auth.socket";
-import { sendMessageSchema } from "@/domains/v1/chat/validation";
-import { chatPublisher } from "@/domains/v1/chat/worker";
+import { createCommentSchema } from "@/domains/v1/comment/validation";
+import { commentPublisher } from "@/domains/v1/comment/worker";
+import { TaskServices } from "@/domains/v1/task/service";
+import { ProjectServices } from "@/domains/v1/project/service";
 import logger from "@/lib/logger";
 
 interface SocketData {
@@ -57,9 +59,9 @@ export class ProjectNamespace extends BaseNamespace {
 			);
 		});
 
-		// Send a chat message
-		socket.on("message:send", (data, ack?: (res: unknown) => void) =>
-			this.handleMessageSend(socket, data, ack)
+		// Create a comment on a task (card)
+		socket.on("comment:create", (data, ack?: (res: unknown) => void) =>
+			this.handleCommentCreate(socket, data, ack)
 		);
 
 		// Emit presence update
@@ -97,48 +99,72 @@ export class ProjectNamespace extends BaseNamespace {
 	}
 
 	/**
-	 * Handle a `message:send` event: validate the payload and publish it to the
-	 * `chat.messages` exchange. Persistence + the `message:new` broadcast happen
-	 * in the in-process consumer (write-behind), so nothing is emitted here.
+	 * Handle a `comment:create` event: validate the payload, verify the target
+	 * task belongs to the handshake's project (taskId is client-supplied),
+	 * sanitize the mention list to real project members, and publish to the
+	 * `comment.events` exchange. Persistence, the `comment:new` broadcast, and
+	 * mention-notification fan-out all happen in the in-process consumer
+	 * (write-behind), so nothing is emitted here.
 	 *
 	 * Wrapped in try/catch because socket handlers run outside the request
 	 * cycle — the publisher's AppError would otherwise be an unhandled rejection
 	 * instead of reaching the global error handler.
 	 *
 	 * @param socket - The sender's socket (carries projectId/user from handshake)
-	 * @param data - Raw `{ content, clientId? }` payload from the client
+	 * @param data - Raw `{ taskId, content, mentionedUserIds?, clientId? }` payload
 	 * @param ack - Optional Socket.io acknowledgement callback
 	 */
-	private async handleMessageSend(
+	private async handleCommentCreate(
 		socket: Socket,
 		data: unknown,
 		ack?: (res: unknown) => void
 	) {
-		const parsed = sendMessageSchema.safeParse(data);
+		const parsed = createCommentSchema.safeParse(data);
 		if (!parsed.success) {
-			ack?.({ ok: false, error: "Invalid message" });
+			ack?.({ ok: false, error: "Invalid comment" });
 			return;
 		}
 
+		const { taskId, content, mentionedUserIds, clientId } = parsed.data;
+		const projectId = Number(socket.data.projectId);
+		const senderId = Number(socket.data.userId);
+
 		try {
-			await chatPublisher.init();
-			await chatPublisher.publish(
+			// The task id comes from the client — confirm it belongs to the
+			// project proven at the handshake before accepting the comment.
+			const task = await TaskServices.getById({ taskId, projectId });
+			if (!task) {
+				ack?.({ ok: false, error: "Task not found" });
+				return;
+			}
+
+			// Keep only genuine project members as mention recipients; drop self.
+			const members = await ProjectServices.getMembers(projectId);
+			const memberIds = new Set(members.map((m) => m.user_id));
+			const validMentions = [...new Set(mentionedUserIds)].filter(
+				(id) => memberIds.has(id) && id !== senderId
+			);
+
+			await commentPublisher.init();
+			await commentPublisher.publish(
 				{
-					projectId: socket.data.projectId,
-					senderId: socket.data.userId,
+					projectId,
+					taskId,
+					senderId,
 					sender: socket.data.user,
-					content: parsed.data.content,
-					clientId: parsed.data.clientId
+					content,
+					mentionedUserIds: validMentions,
+					clientId
 				},
 				{
 					persistent: true
 				},
-				"project." + socket.data.projectId + ".message"
+				"task." + taskId + ".comment"
 			);
 			ack?.({ ok: true });
 		} catch (err) {
-			logger.error("[chat] publish failed:", err);
-			ack?.({ ok: false, error: "Failed to send message" });
+			logger.error("[comment] publish failed:", err);
+			ack?.({ ok: false, error: "Failed to send comment" });
 		}
 	}
 

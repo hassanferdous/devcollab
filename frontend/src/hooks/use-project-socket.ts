@@ -4,15 +4,15 @@ import { useProjectContext } from "~/components/providers/project-slug-provider"
 import { getProjectSocket } from "~/lib/socket";
 import { useAuthStore } from "~/stores/auth";
 import type {
-	ChatMessage,
-	MessageNewPayload,
+	CommentItem,
+	CommentNewPayload,
 	Task,
 	TaskCreatedPayload,
 	TaskDeletedPayload,
 	TaskUpdatedPayload,
 } from "~/types";
 import { taskKeys } from "~/queries/use-tasks";
-import { messageKeys, type MessageListData } from "~/queries/use-messages";
+import { commentKeys, type CommentListData } from "~/queries/use-comments";
 
 export function useProjectSocket(projectId: number) {
 	const qc = useQueryClient();
@@ -66,16 +66,17 @@ export function useProjectSocket(projectId: number) {
 			);
 		});
 
-		socket.on("message:new", (msg: MessageNewPayload) => {
-			qc.setQueryData<MessageListData>(
-				messageKeys.lists(projectId),
+		socket.on("comment:new", (c: CommentNewPayload) => {
+			// Route by task_id: a project-room broadcast may target any card.
+			qc.setQueryData<CommentListData>(
+				commentKeys.lists(c.task_id),
 				(old) => {
 					const list = old?.data ?? [];
 					// Reconcile the sender's optimistic row by clientId; otherwise append.
-					const idx = msg.clientId
-						? list.findIndex((m) => m.clientId === msg.clientId)
+					const idx = c.clientId
+						? list.findIndex((m) => m.clientId === c.clientId)
 						: -1;
-					const reconciled: ChatMessage = { ...msg, pending: false };
+					const reconciled: CommentItem = { ...c, pending: false };
 					const data =
 						idx >= 0
 							? list.map((m, i) => (i === idx ? reconciled : m))
@@ -106,7 +107,7 @@ export function useProjectSocket(projectId: number) {
 			socket.off("task:created");
 			socket.off("task:updated");
 			socket.off("task:deleted");
-			socket.off("message:new");
+			socket.off("comment:new");
 			socket.off("user:typing");
 			socket.off("user:typing-stop");
 			socket.off("presence:updated");

@@ -49,12 +49,12 @@ const router = express.Router();
  *               email:
  *                 type: string
  *                 format: email
- *                 example: user@example.com
+ *                 example: admin@gmail.com
  *               password:
  *                 type: string
  *                 format: password
  *                 minLength: 8
- *                 example: password123
+ *                 example: user@123
  *     responses:
  *       200:
  *         description: Successfully logged in

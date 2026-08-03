@@ -9,7 +9,8 @@ import { default as authRouter } from "@/domains/v1/auth/api";
 import { default as userRouter } from "@/domains/v1/user/api";
 import { default as projectRouter } from "@/domains/v1/project/api";
 import { default as taskRouter } from "@/domains/v1/task/api";
-import { default as chatRouter } from "@/domains/v1/chat/api";
+import { default as commentRouter } from "@/domains/v1/comment/api";
+import { default as notificationRouter } from "@/domains/v1/notification/api";
 
 const router = express.Router();
 
@@ -113,8 +114,11 @@ router.use("/projects", projectRouter);
 /** @description Tasks Routes */
 router.use("/projects/:projectId/tasks", taskRouter);
 
-/** @description Chat Routes */
-router.use("/projects/:projectId/chat", chatRouter);
+/** @description Comment Routes (per-task / card comments) */
+router.use("/projects/:projectId/tasks/:taskId/comments", commentRouter);
+
+/** @description Notification Routes */
+router.use("/notifications", notificationRouter);
 
 /***** Global route not found *****/
 router.use(/.*/, (_, res: Response) => {

@@ -6,7 +6,7 @@ export type MemberAbilityContext = {
 	project_id: number;
 	user_id: number;
 	isMember: boolean;
-	__subjectType: "Project" | "Task" | "Message";
+	__subjectType: "Project" | "Task" | "Comment";
 };
 
 export default function defineAbilityFor(context: MemberAbilityContext) {
@@ -21,12 +21,13 @@ export default function defineAbilityFor(context: MemberAbilityContext) {
 			can("create", "Task");
 			can("update", "Task");
 			can("delete", "Task");
-			can("read", "Message");
+			can("create", "Comment");
+			can("read", "Comment");
 			break;
 		case "viewer":
 			can("read", "Project");
 			can("read", "Task");
-			can("read", "Message");
+			can("read", "Comment");
 			break;
 		default:
 			break;

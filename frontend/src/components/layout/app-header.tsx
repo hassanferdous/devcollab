@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Separator } from "~/components/ui/separator";
 import { SidebarTrigger } from "~/components/ui/sidebar";
+import { NotificationBell } from "~/components/notification/notification-bell";
 import { ThemeToggle } from "./theme-toggle";
 
 interface AppHeaderProps {
@@ -16,6 +17,7 @@ export function AppHeader({ title, actions }: AppHeaderProps) {
 			{title && <h1 className="text-sm font-semibold">{title}</h1>}
 			<div className="ml-auto flex items-center gap-2">
 				{actions}
+				<NotificationBell />
 				<ThemeToggle />
 			</div>
 		</header>

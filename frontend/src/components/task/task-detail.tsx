@@ -56,7 +56,7 @@ import type {
 } from "~/types";
 import { useProjectContext } from "../providers/project-slug-provider";
 import { Can } from "@casl/react";
-import { ProjectChat } from "../project/project-chat";
+import { TaskComments } from "./task-comments";
 import { getInitials } from "~/lib/utils";
 
 const statusConfig: Record<TaskStatus, { label: string; badgeCls: string }> = {
@@ -717,8 +717,11 @@ export function TaskDetail({
 							<MessageSquare className="size-4" />
 							Comments and activity
 						</div>
-						<ProjectChat
+						<TaskComments
 							projectId={projectId}
+							taskId={task.id}
+							assignees={assignees}
+							members={members ?? []}
 							className="min-h-0 flex-1"
 						/>
 					</div>

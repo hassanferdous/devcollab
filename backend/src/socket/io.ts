@@ -1,5 +1,6 @@
 import { config } from "@/config";
 import { ProjectNamespace } from "@/socket/project.nsp";
+import { NotificationNamespace } from "@/socket/notification.nsp";
 import { Express } from "express";
 import { createServer, Server as HttpServer } from "http";
 import { Server } from "socket.io";
@@ -20,6 +21,9 @@ export const initSocketIO = (
 	 */
 	const projectNsp = new ProjectNamespace(io);
 	app.set("projectNsp", projectNsp.get());
+
+	const notificationNsp = new NotificationNamespace(io);
+	app.set("notificationNsp", notificationNsp.get());
 
 	return { server, io };
 };

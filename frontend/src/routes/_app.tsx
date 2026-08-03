@@ -5,6 +5,7 @@ import { getCookies, getRequestHeaders } from "@tanstack/react-start/server";
 import { AppSidebar } from "~/components/layout/app-sidebar";
 import { queryClient } from "~/components/providers/query-provider";
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
+import { useNotificationsSocket } from "~/hooks/use-notifications-socket";
 import { meFn } from "~/server/auth";
 import { useAuthStore } from "~/stores/auth";
 
@@ -44,6 +45,8 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
+	// Global, always-on subscription so mentions reach the user on any page.
+	useNotificationsSocket();
 	return (
 		<SidebarProvider>
 			<AppSidebar />
